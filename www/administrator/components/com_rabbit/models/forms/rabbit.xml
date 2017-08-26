@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+	<fieldset>
+		<field
+				name="id"
+				type="hidden"
+				/>
+		<!--
+			enctype="multipart/form-data"
+			method="post"
+			See also https://docs.joomla.org/File_form_field_type
+		-->
+		<field
+				name="import_file"
+				type="file"
+				label="COM_RABBIT_RABBIT_FILE_LABEL"
+				description="COM_RABBIT_RABBIT_FILE_DESC"
+				size="64"
+				class="inputbox"
+				default=""
+				/>
+		<field
+				name="import_options"
+				type="text"
+				label="COM_RABBIT_RABBIT_OPTIONS_LABEL"
+				description="COM_RABBIT_RABBIT_OPTIONS_DESC"
+				size="64"
+				class="inputbox"
+				default=""
+				/>
+		<field
+				name="no_translate"
+				type="checkbox"
+				label="COM_RABBIT_RABBIT_NOTRANSLATE_LABEL"
+				description="COM_RABBIT_RABBIT_NOTRANSLATE_DESC"
+				value="1"
+				class="input-chbox"
+				default="0"
+				/>
+	</fieldset>
+</form>
