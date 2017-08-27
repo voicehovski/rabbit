@@ -22,13 +22,32 @@ defined('_JEXEC') or die('Restricted access');
                         <div class="control-group">
                             <div class="control-label"><?php echo "control-label"; ?></div>
                             <div class="controls"><?php echo "controls"; ?></div>
-							<p>Список изменений, которые будут внесены</p>
-							<?php var_dump ($field); ?>
+							<?php //var_dump ($field); ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
         </fieldset>
+		<?php if ( $this -> error_struct ) { ?>
+		<fieldset>
+			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список обнаруженных ошибок'; ?></legend>
+			<?php foreach ( $this -> error_struct as $error ) { ?>
+				<div>
+					<?php echo $error; ?>
+				</div>
+			<?php } ?>
+        </fieldset>
+		<?php } ?>
+		<?php if ( $this -> import_struct ) { ?>
+        <fieldset>
+			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список изменений, которые будут внесены'; ?></legend>
+			<?php foreach ( $this -> import_struct as $is ) { ?>
+				<div>
+					<?php //echo implode ( " :: ", $is ); ?>
+				</div>
+			<?php } ?>
+        </fieldset>
+		<?php } ?>
     </div>
     <input type="hidden" name="task" value="rabbit.import" />
     <?php echo JHtml::_('form.token'); ?>

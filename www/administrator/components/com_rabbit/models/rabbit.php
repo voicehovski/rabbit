@@ -37,21 +37,4 @@ class RabbitModelRabbit extends JModelAdmin
  
 		return $form;
 	}
-	
-	public function storeUploadedFiles (  ) {
-		$input    = JFactory::getApplication()->input;
-		$userfile = $input->files->get('jform', null, 'raw');
-		
-		$tmp_src = $userfile [ 'import_file' ] ['tmp_name'];
-		//$tmp_dest = JPATH_ROOT . '/public_html/tmp/' . $userfile [ 'import_file' ] [ 'name' ];
-		$tmp_dest = '/tmp/' . $userfile [ 'import_file' ] [ 'name' ];
-		
-		jimport('joomla.filesystem.file');
-		JFile::upload($tmp_src, $tmp_dest, false, true);
-		//echo JFile::copy($tmp_src, $tmp_dest);
-		//move_uploaded_file ($tmp_src, $tmp_dest);
-
-		// $package = JInstallerHelper::unpack($tmp_dest, true);
-		// return $package;
-	}
 }

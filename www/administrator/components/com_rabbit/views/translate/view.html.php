@@ -21,7 +21,8 @@ class RabbitViewTranslate extends JViewLegacy
 		$this->import_result = $this->get('ImportResult');
 		
 		$app = JFactory::getApplication();
-		$this -> check_status = rand ( 0, 2 );
+		//$this -> check_status = rand ( 0, 2 );
+		$this -> check_status = 0;
 		
 		switch ( $this -> check_status ) {
 			case 2:

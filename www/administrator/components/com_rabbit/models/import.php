@@ -13,10 +13,9 @@ defined('_JEXEC') or die('Restricted access');
 
 class RabbitModelImport extends JModelAdmin
 {
-	public function getImportResult ( $param = array() )
+	public function getImportReport ( $param = array() )
 	{
-		//make import and return it result
-		return array ( "Import result 1", "Import result 2" );
+		return array ( "Import report 1", "Import report 2" );
 	}
 	
 	public function getTable($type = 'Rabbit', $prefix = 'RabbitTable', $config = array())
@@ -41,5 +40,14 @@ class RabbitModelImport extends JModelAdmin
 		}
  
 		return $form;
+	}
+	
+	/*
+			Выполняет запись продукции в базу данных
+			
+			Возвращает статус выполнения
+	*/
+	public function import ( $import_struct ) {
+		return 0;
 	}
 }

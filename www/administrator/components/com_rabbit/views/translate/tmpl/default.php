@@ -22,37 +22,24 @@ defined('_JEXEC') or die('Restricted access');
                         <div class="control-group">
                             <div class="control-label"><?php echo "control-label"; ?></div>
                             <div class="controls"><?php echo "controls"; ?></div>
+							<p>Список внесенных изменений или сводные данные</p>
 							<?php var_dump ($field); ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
         </fieldset>
-		
         <fieldset>
-			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список внесенных изменений'; ?></legend>
-			<?php if ( ! $this -> import_report ) { ?>
-				<div> Empty report </div>
-			<?php } else { ?>
-			<?php foreach ( $this -> import_report as $ir ) { ?>
-				<div>
-					<?php echo $ir; ?>
-				</div>
-			<?php } ?>
-			<?php } ?>
-        </fieldset>
-		
-        <fieldset>
-			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Исходный список'; ?></legend>
-			<?php if ( ! $this -> import_struct ) { ?>
+			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Переведено'; ?></legend>
+			<?php //if ( ! $this -> import_struct ) { ?>
 				<div> Empty session </div>
-			<?php } else { ?>
-			<?php foreach ( $this -> import_struct as $is ) { ?>
+			<?php //} else { ?>
+			<?php //foreach ( $this -> import_struct as $is ) { ?>
 				<div>
-					<?php echo $is; ?>
+					<?php //echo $is; ?>
 				</div>
-			<?php } ?>
-			<?php } ?>
+			<?php //} ?>
+			<?php //} ?>
         </fieldset>
     </div>
     <input type="hidden" name="task" value="rabbit" />

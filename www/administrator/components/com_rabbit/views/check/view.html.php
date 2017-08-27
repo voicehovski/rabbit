@@ -18,33 +18,44 @@ class RabbitViewCheck extends JViewLegacy
 	public function display($tpl = null)
 	{
 		$this->form = $this->get('Form');
-		$this->import_result = $this->get('ImportResult');
+		
+		//Получаем имя загруженной таблицы импорта
+		//См. https://api.joomla.org/cms-3/classes/JInput.html#method_get
+		$jinput = JFactory::getApplication()->input;
+		$name = $jinput->get('filename');
+		
+		$model = $this -> getModel ( 'check' );
+		
+		if ( !class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
+		$csv_helper = csvHelper::getInstance (  );
+		echo $csv_helper -> hallo (  );
+		
+		if ( ! $name ) {
+			$this -> check_status = 3;
+		} else {
+			//Читаем данные из таблицы импорта и выполняем проверку.
+			$csv_data = file ( JPATH_SITE . '/tmp/' . $name );	//Функция file_get_contents читает файл в одну строку, file - в массив строк
+			$this -> check_status = $model -> check ( $csv_data );
+		}
 		
 		//$this -> check_status = rand ( 0, 2 );
-		$this -> check_status = 0;
-		
-		//$jinput = JFactory::getApplication()->input;
-		//$upload_options = $jinput -> get ( 'options', 'option_1=122', 'STR' );
-		//$upload_files = $jinput -> files -> get ( 'jform' );
-		//var_dump ( $jinput );
-		//var_dump ( $jinput -> files );
-		//var_dump ( $_POST );
-		//var_dump ( $_FILES );
-		//var_dump ( $upload_files );
-		//echo 'name = ' . $upload_files [ 'import_file' ] [ 'name' ];
-		//echo 'type = ' . $upload_files [ 'import_file' ] [ 'type' ];
-		//echo 'tmp_name = ' . $upload_files [ 'import_file' ] [ 'tmp_name' ];
-		//echo 'error = ' . $upload_files [ 'import_file' ] [ 'error' ];
-		//echo 'size = ' . $upload_files [ 'import_file' ] [ 'size' ];
 		
 		switch ( $this -> check_status ) {
+			case 3:
+				//$this -> message = "No input file, bleat!";
+				$this -> setLayout ( "error" );
+				break;
 			case 2:
+				$this->error_struct = $this->get('ErrorStruct');
 				$this -> setLayout ( "error" );
 				break;
 			case 1:
+				$this->error_struct = $this->get('ErrorStruct');
 				$this -> setLayout ( "warning" );
 				break;
 			case 0:
+				$this->import_struct = $this->get('ImportStruct');
+				RabbitHelper::save_variable ( 'import_struct', $this->import_struct );
 				break;
 			default:
 				JError::raiseError(500, "Unknown import check_status: " . $this -> check_status);
@@ -86,4 +97,7 @@ class RabbitViewCheck extends JViewLegacy
 				return false;
 		}
 	}
+
+	
+	
 }

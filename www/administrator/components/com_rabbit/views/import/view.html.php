@@ -13,17 +13,22 @@ defined('_JEXEC') or die('Restricted access');
 class RabbitViewImport extends JViewLegacy
 {
 	//protected $form = null;
-	protected $check_status = null;
+	protected $import_status = null;
 
 	public function display($tpl = null)
 	{
 		$this->form = $this->get('Form');
-		$this->import_result = $this->get('ImportResult');
+		$this->import_report = $this->get('ImportReport');
 		
 		$app = JFactory::getApplication();
-		$this -> check_status = rand ( 0, 1 );
 		
-		switch ( $this -> check_status ) {
+		$this -> import_struct = RabbitHelper::restore_variable ( 'import_struct' );
+		
+		$model = $this -> getModel ( 'import' );
+		$this -> import_status = $model -> import ( $this -> import_struct );
+		
+		
+		switch ( $this -> import_status ) {
 /*$app -> redirect(JRoute::_('index.php?option=com_rabbit&view=error', false), "Optional comment" )*/;
 			case 1:
 				$this -> setLayout ( "error" );
@@ -31,7 +36,7 @@ class RabbitViewImport extends JViewLegacy
 			case 0:
 				break;
 			default:
-				JError::raiseError(500, "Unknown import check_status: " . $this -> check_status);
+				JError::raiseError(500, "Unknown import import_status: " . $this -> import_status);
 				return false;
 		}
  
@@ -54,7 +59,7 @@ class RabbitViewImport extends JViewLegacy
 		$input = JFactory::getApplication()->input;
 		$input->set('hidemainmenu', true);
 		
-		switch ( $this -> check_status ) {
+		switch ( $this -> import_status ) {
 			case 1:
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
 				JToolBarHelper::custom('rabbit', null, null, "CANCEL", false);

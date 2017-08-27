@@ -20,9 +20,8 @@ class RabbitControllerRabbit extends JControllerForm
 	}
 	
 	public function check ( $cachable = false, $urlparams = false ) {
-		$model = $this -> getModel ( 'rabbit' );
-		$model -> storeUploadedFiles (  );
-		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=check', false) );
+		$name = RabbitHelper::storeUploadedFiles (  );
+		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=check&filename=' . $name, false) );
 	}
 	
 	public function rollback ( $cachable = false, $urlparams = false ) {
