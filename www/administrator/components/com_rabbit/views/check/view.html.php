@@ -19,22 +19,35 @@ class RabbitViewCheck extends JViewLegacy
 	{
 		$this->form = $this->get('Form');
 		
-		//Получаем имя загруженной таблицы импорта
-		//См. https://api.joomla.org/cms-3/classes/JInput.html#method_get
-		$jinput = JFactory::getApplication()->input;
-		$name = $jinput->get('filename');
-		
 		$model = $this -> getModel ( 'check' );
 		
+		//Получаем имена загруженных файлов
+		//См. https://api.joomla.org/cms-3/classes/JInput.html#method_get
+		$jinput = JFactory::getApplication()->input;
+		$table_filename = $jinput->get('table_filename', '', 'string');
+		$images = $jinput->get('images', null, null);
+		
+		// Получаем экземпляр хелпера. Если нам нужны вспомогательные классы, то работать с ними следует именно так
+		// Пока этот хелпер ничего не делает
 		if ( !class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
 		$csv_helper = csvHelper::getInstance (  );
 		echo $csv_helper -> hallo (  );
 		
-		if ( ! $name ) {
+		// Проверяем, передано ли имя загруженной таблицы, но можно обойтись без этого ,а просто искать в каталоге загрузки. Только после использования удалять файлы
+		if ( $images && is_array ( $images ) ) {
+			foreach ( $images as $image ) {
+				echo "$image <br/>";
+			}
+		} else {
+			echo "No images passed<br/>";
+		}
+		
+		if ( ! $table_filename ) {
+			echo "No table passed<br/>";
 			$this -> check_status = 3;
 		} else {
 			//Читаем данные из таблицы импорта и выполняем проверку.
-			$csv_data = file ( JPATH_SITE . '/tmp/' . $name );	//Функция file_get_contents читает файл в одну строку, file - в массив строк
+			$csv_data = file ( JPATH_SITE . '/tmp/' . $table_filename );	//Функция file_get_contents читает файл в одну строку, file - в массив строк
 			$this -> check_status = $model -> check ( $csv_data );
 		}
 		

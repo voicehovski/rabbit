@@ -11,13 +11,33 @@
 			See also https://docs.joomla.org/File_form_field_type
 		-->
 		<field
-				name="import_file"
+				name="import_table"
 				type="file"
 				label="COM_RABBIT_RABBIT_FILE_LABEL"
 				description="COM_RABBIT_RABBIT_FILE_DESC"
 				size="64"
 				class="inputbox"
 				default=""
+				/>
+		<field
+				name="content_type"
+				type="combo"
+				label="COM_RABBIT_RABBIT_CONTENTTYPE_LABEL"
+				description="COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_DESC"
+				size="16"
+				>
+					<option value="1">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_PRODUCTS</option>
+					<option value="2">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_USERS</option>
+		</field>
+		<field
+				name="images"
+				type="file"
+				label="COM_RABBIT_RABBIT_IMAGES_LABEL"
+				description="COM_RABBIT_RABBIT_IMAGES_DESC"
+				size="64"
+				class="inputbox"
+				default=""
+				multiple="1"
 				/>
 		<field
 				name="import_options"
@@ -28,14 +48,30 @@
 				class="inputbox"
 				default=""
 				/>
-		<field
-				name="no_translate"
-				type="checkbox"
-				label="COM_RABBIT_RABBIT_NOTRANSLATE_LABEL"
-				description="COM_RABBIT_RABBIT_NOTRANSLATE_DESC"
-				value="1"
-				class="input-chbox"
-				default="0"
-				/>
 	</fieldset>
+
+	<fields name="param">
+		<fieldset name="settings">
+			<field
+					name="import_type"
+					type="radio"
+					label="COM_RABBIT_RABBIT_IMPORTTYPE_LABEL"
+					description="COM_RABBIT_RABBIT_TABLE_IMPORTTYPE_DESC"
+					default="0"
+					>
+						<option value="0">COM_RABBIT_RABBIT_TABLE_IMPORTTYPE_A</option>
+						<option value="1">COM_RABBIT_RABBIT_TABLE_IMPORTTYPE_B</option>
+						<option value="2">COM_RABBIT_RABBIT_TABLE_IMPORTTYPE_C</option>
+			</field>
+			<field
+					name="userimport"
+					type="checkbox"
+					label="COM_RABBIT_RABBIT_USERIMPORT_LABEL"
+					description="COM_RABBIT_RABBIT_USERIMPORT_DESC"
+					value="1"
+					class="input-chbox"
+					default="0"
+					/>
+		</fieldset>
+	</fields>
 </form>

@@ -20,8 +20,28 @@ class RabbitControllerRabbit extends JControllerForm
 	}
 	
 	public function check ( $cachable = false, $urlparams = false ) {
-		$name = RabbitHelper::storeUploadedFiles (  );
-		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=check&filename=' . $name, false) );
+		// Копируем загруженные файлы во временную директорию
+		$files = RabbitHelper::storeUploadedFiles (  );
+		$table_filename = "";
+		$images = "";
+		// Если файлов нет, нужно что-то предпринять
+		if ( ! $files ) {
+			//Error
+			//Redirect
+			return;
+		}
+		// Передаём имена файлов в запросе. Нужно учитывать ограничение длины запроса. Возможно лучше передавать в сессии
+		// имя таблицы в переменной
+		if ( $files [ 'import_table' ] ) {
+			$table_filename = $files [ 'import_table' ] [ 'name' ];
+		}
+		// а имена изображений - в массиве. См. также http://php.net/http_build_query
+		if ( $files ['images'] ) {
+			foreach ( $files ['images'] as $image_filename ) {
+				$images .= "images[]=".$image_filename['name']."&";
+			}
+		}
+		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=check&' . $images . 'table_filename=' . $table_filename, false) );
 	}
 	
 	public function rollback ( $cachable = false, $urlparams = false ) {

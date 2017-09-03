@@ -29,20 +29,75 @@ abstract class RabbitHelper extends JHelperContent {
 	}
 	
 	public static function storeUploadedFiles (  ) {
-		//Средства жумлы для работы с загруженными файлами
+		//Средства жумлы для работы с полями формы
 		$input    = JFactory::getApplication()->input;
-		$userfile = $input->files->get('jform', null, 'raw');
 		
-		//Скорее всего это директория временных файлов сервера /tmp
-		$tmp_src = $userfile [ 'import_file' ] ['tmp_name'];
-		//Задаём временную папку в корне сайта
-		$tmp_dest = JPATH_SITE . '/tmp/' . $userfile [ 'import_file' ] [ 'name' ];
+		/*		Отладка и тестирование ввода. Для отладки закомментировать редирект в контроллере !!!
 		
-		//Средства жумлы для работы с файлами. Исходные файлы, кажется, удаляются
+			$input содержит поля формы в виде иерархического массива с корневым элементом jform
+			Поля доступны как элементы второго уровня [jform][field_name]
+			Поля из вкладок (в xml заключены в секцию fields) - третий уровень [jform][fieldіs_section_name][field_name]
+			
+			Конструкции вида
+			$input -> get ( 'field_name', "default value", "check_type" );
+			или
+			$input -> get ( 'jform[params][import_type]', "default value", "check_type" );
+			не работают
+		
+			Можно извлечь весь массив, передав null в качестве шаблона проверки
+			$jform = $input -> get ( 'jform', null, null );
+			foreach ( $jform as $k => $v ) {
+				if ( !is_array ( $v ) ) {
+					echo "$k = $v<br/>";
+					continue;
+				}
+				print_array ( $v );	//rerucsive...
+			}
+			
+			Можно использовать функцию getArray - тогда доступны проверки, но нужно заранее описать структуру
+			$a2 = $input -> getArray ( array (
+				"jform" => array (
+					'import_options' => 'string',
+					'param' => array (
+						'import_type' => 'string',
+						'userimport' => 'string'
+					)
+				)
+			) );
+			echo $a2 ['jform'] ['param'] ['import_type'];
+			...
+		*/
+		
+		//	Работа с файлами
+		
+		//Если форма содержит несколько полей типа "Файл", они будут доступны как элементы массива с соответствующими именами
+		$uploaded_files = $input->files->get('jform', null, 'raw');
+		
+		//Средства жумлы для работы с файлами. Функция JFile::upload удаляет исходные временные файлы
 		jimport('joomla.filesystem.file');
-		JFile::upload($tmp_src, $tmp_dest, false, true);
 		
-		return $userfile [ 'import_file' ] [ 'name' ];
+		//Поле с возможностью загрузки нескольких файлов (аттрибут multiple) будет доступно как массив
+		if ( $uploaded_files ['images'] ) {
+			foreach ( $uploaded_files ['images'] as $image )
+				JFile::upload (
+					$image ['tmp_name'],
+					JPATH_SITE . '/tmp/' . $image [ 'name' ],
+					false, true
+				);
+		}
+		
+		if ( $uploaded_files ['import_table'] ) {
+			//Получаем путь к временной папке. Скорее всего это директория временных файлов сервера /tmp
+			$tmp_src = $uploaded_files [ 'import_table' ] ['tmp_name'];
+			
+			//Задаём куда копировать. Пусть это будет временная папка в корне сайта
+			$tmp_dest = JPATH_SITE . '/tmp/' . $uploaded_files [ 'import_table' ] [ 'name' ];
+			
+			jimport('joomla.filesystem.file');
+			JFile::upload($tmp_src, $tmp_dest, false, true);
+		}
+		
+		return $uploaded_files;
 		
 		//Другие способы работы с файлами
 		//echo JFile::copy($tmp_src, $tmp_dest);
@@ -63,11 +118,11 @@ abstract class RabbitHelper extends JHelperContent {
 			var_dump ( $_POST );
 			var_dump ( $_FILES );
 			var_dump ( $upload_files );
-			echo 'name = ' . $upload_files [ 'import_file' ] [ 'name' ];
-			echo 'type = ' . $upload_files [ 'import_file' ] [ 'type' ];
-			echo 'tmp_name = ' . $upload_files [ 'import_file' ] [ 'tmp_name' ];
-			echo 'error = ' . $upload_files [ 'import_file' ] [ 'error' ];
-			echo 'size = ' . $upload_files [ 'import_file' ] [ 'size' ];
+			echo 'name = ' . $upload_files [ 'import_table' ] [ 'name' ];
+			echo 'type = ' . $upload_files [ 'import_table' ] [ 'type' ];
+			echo 'tmp_name = ' . $upload_files [ 'import_table' ] [ 'tmp_name' ];
+			echo 'error = ' . $upload_files [ 'import_table' ] [ 'error' ];
+			echo 'size = ' . $upload_files [ 'import_table' ] [ 'size' ];
 		*/
 	}
 
