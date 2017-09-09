@@ -93,7 +93,6 @@ abstract class RabbitHelper extends JHelperContent {
 			//Задаём куда копировать. Пусть это будет временная папка в корне сайта
 			$tmp_dest = JPATH_SITE . '/tmp/' . $uploaded_files [ 'import_table' ] [ 'name' ];
 			
-			jimport('joomla.filesystem.file');
 			JFile::upload($tmp_src, $tmp_dest, false, true);
 		}
 		

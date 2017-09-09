@@ -40,6 +40,15 @@
 				multiple="1"
 				/>
 		<field
+				name="convert_images"
+				type="checkbox"
+				label="COM_RABBIT_RABBIT_CONVERT_IMAGES_LABEL"
+				description="COM_RABBIT_RABBIT_CONVERT_IMAGES_DESC"
+				value="1"
+				class="input-chbox"
+				default="0"
+				/>
+		<field
 				name="import_options"
 				type="text"
 				label="COM_RABBIT_RABBIT_OPTIONS_LABEL"

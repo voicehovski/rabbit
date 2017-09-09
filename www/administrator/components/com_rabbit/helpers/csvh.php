@@ -2,32 +2,58 @@
 
 defined('_JEXEC') or die();
 
-/*	
-	Чтобы создать экземпляр, например в модели, выполняем следующее:
-	
-	if ( !class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DS . 'helpers' . DS . 'csvh.php' );
+/*		Вспомогательный класс
+
+	Чтобы создать экземпляр, например в модели или виде, выполняем следующее:
+	if ( !class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
 	$csv_helper = csvHelper::getInstance (  );
+
+	Дальше используем как обычный объект:
+	echo $csv_helper -> hallo (  );
 */
+
 
 class csvHelper {
 	public $pu;
 	protected $pr;
 	var $v;
 	
-	static $_instance;
+	$index = -1;
 	
-	private function __construct (  ) {
-		$this -> pr = "Hallo from csv helper!";
+	public function __construct ( $csv_data ) {
+		$status = $this -> check ( $csv_data );
 	}
 	
-	static public function getInstance (  ) {
-		if (!is_object(self::$_instance)) {
-			self::$_instance = new csvHelper();
+	protected function check ( $data ) {
+		$status = 0;
+		
+		//Входные данные должны быть массивом строк
+		if ( ! is_array ( $data ) ) {
+			//$this -> errors = type of $csv_data, "input is not array";
+			$status = 3;
 		}
-		return self::$_instance;
+		
+		//Массив должен содержать хоть что-то
+		if ( ! count ( $data ) ) {
+			//$this -> errors = type of $csv_data, "input is empty";
+			$status = 3;
+		}
+		
+		//Пропускаем пустые строки, если такие есть
+		$index = -1
+		while ( ! data [++$index] ) {
+			continue;
+		}
+		$this -> index = $index;
 	}
 	
-	public function hallo (  ) {
-		return $this -> pr;
-	}
+	function createHeaderIndexes 
+}
+
+$csv = new csvHelper ( $csv_data );
+$
+while ( $csv -> hasMoreRows (  ) ) {
+	$row = $csv -> getNextRow (  );
+	$row ['sku']
+	
 }
