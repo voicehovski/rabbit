@@ -127,38 +127,33 @@ abstract class RabbitHelper extends JHelperContent {
 
 
 	public static $CSV_DELIMITER = ';';
-	public static $CSV_ENCLOSURE = '"';
+	public static $CSV_ENCLOSURE = '';
 	public static $CSV_ESCAPE = '\\';
 	
-	public static function get_csv_headers ( $csv_data ) {
+	/*		Данные для валидатора csv
 		
-	}
-	
-	static $HEADERS = array (
+		Это шаблон который дозаполняется в валидаторе и служит для проверки корректности таблицы импорта и доступа к данным csv
+		
+		По ключам мы сможем в валидаторе и далее по коду получать доступ к элементам строк csv посредством объектов CsvRow
+		Поле name должно соответствать заголовку таблицы импорта
+		Поле pattern - регулярное выражение для проверки данных
+	*/
+	static $PRODUCT_TABLE_VALIDATOR = array (
 		'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "#(\\d+)/(\\d+)/(\\d+)#", 'error_status' => 2 ),
 		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "/.*/", 'error_status' => 2 ),
 		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "/.*/", 'error_status' => 2 ),
-		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "/.*/", 'error_status' => 1 ),
-		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => "/.*/", 'error_status' => 2 ),
-		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "/.*/", 'error_status' => 1 )
+		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "/.+/", 'error_status' => 1 ),
+		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => "/.+/", 'error_status' => 2 ),
+		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "/.*/", 'error_status' => 1 ),
+		'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => "/.*/", 'error_status' => 1 )
 	);
-	public static function create_header_indexes ( $csv_row ) {
-		for ( $i = 0; $i < count ( $csv_row ); $i++ ) {
-			//Используем здесь ссылку чтобы можно было изменять элементы массива
-			foreach ( RabbitHelper::$HEADERS as &$h ) {
-				//! strcasecmp хуёво сравнивает мультибайтные строки без учета регистра, а именно - не сравнивает
-				if ( strcasecmp ( $csv_row [$i], $h ['name'] ) == 0 ) {
-					if ( $h ['index'] != -1 ) {
-						//! Ошибка. Такой заголовок уже зарегистрирован. Надо что-то делать
-					}
-					$h ['index'] = $i;
-					break;	//foreach
-				}
-			}
-		}
-		//! Проверить, все ли заголовки есть, нет ли лишних
-		//! Плохий статический член, не можна. Надо заменить на кокой-то self
-		return RabbitHelper::$HEADERS;
-	}
+	
+	static $USER_TABLE_VALIDATOR = array (
+	
+	);
+	
+	static $ORDER_TABLE_VALIDATOR = array (
+	
+	);
 	
 }

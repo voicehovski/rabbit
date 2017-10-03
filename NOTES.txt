@@ -1,0 +1,43 @@
+		Для метода
+		
+	@HOW_TO_USE: 
+	
+	@ACTIONS:
+	* 
+	
+	@RETURN: 
+	
+	@PROBLEMS:
+	* 
+
+	
+		Для класса
+	
+	@ANNOTATION: 
+	
+	@HOW_TO_USE:
+	* 
+	
+	@PROBLEMS:
+	* 
+
+	
+		Формирование запроса-get с параметром массивом
+
+	Прочесть потом можно приблизительно так:
+		//См. https://api.joomla.org/cms-3/classes/JInput.html#method_get
+		$jinput = JFactory::getApplication()->input;
+		$table_filename = $jinput->get('table_filename', '', 'string');
+		$images = $jinput->get('images', null, null);
+		
+		
+		Использование вспомогательных классов
+
+	Размещаем файл с кодом класса в директории helpers. Без закрывающего тега ?>
+		
+	Чтобы создать экземпляр, например в модели или виде, выполняем следующее (подставляем соответствующие имя класса и путь к файлу):
+	if ( !class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
+	$csv_helper = csvHelper::getInstance (  );
+
+	Дальше используем как обычный объект:
+	echo $csv_helper -> hallo (  );

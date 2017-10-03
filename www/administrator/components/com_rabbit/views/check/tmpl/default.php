@@ -28,22 +28,24 @@ defined('_JEXEC') or die('Restricted access');
                 </div>
             </div>
         </fieldset>
-		<?php if ( $this -> error_struct ) { ?>
+		<?php if ( $this -> error_data ) { ?>
 		<fieldset>
 			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список обнаруженных ошибок'; ?></legend>
-			<?php foreach ( $this -> error_struct as $error ) { ?>
+			<?php// foreach ( $this -> error_data as $error ) { ?>
 				<div>
-					<?php echo $error; ?>
+					<?php// echo $error; ?>
 				</div>
-			<?php } ?>
+			<?php// } ?>
         </fieldset>
 		<?php } ?>
-		<?php if ( $this -> import_struct ) { ?>
+		<?php if ( $this -> import_data ) { ?>
         <fieldset>
 			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список изменений, которые будут внесены'; ?></legend>
-			<?php foreach ( $this -> import_struct as $is ) { ?>
+			<?php// foreach ( $this -> import_data as $is ) { ?>
 				<div>
 					<?php //echo implode ( " :: ", $is ); ?>
+					<?php print_r ( $this -> import_data ); ?>
+					<?php print_r ( $this -> logical_errors ); ?>
 				</div>
 			<?php } ?>
         </fieldset>

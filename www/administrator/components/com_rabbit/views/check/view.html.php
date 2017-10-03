@@ -17,7 +17,7 @@ class RabbitViewCheck extends JViewLegacy
 
 	public function display($tpl = null)
 	{
-		$TMP = JPATH_SITE . '/tmp/';
+		$TMP = JPATH_SITE . '/tmp/';	// Путь загрузки файлов. Аналогичная переменная в контроллере
 		
 		$this->form = $this->get('Form');
 		
@@ -29,6 +29,7 @@ class RabbitViewCheck extends JViewLegacy
 		
 		// Проверка отсутствия файлов происходит в контроллере, так что здесь хоть чтото должно быть
 		// @IDEA: Можно ничего не проверять и не передавать, а просто искать в каталоге загрузки новые файлы
+		// @TODO: Скопировать изображения в нужный каталог. При необходимости преобразовать
 		if ( $images && is_array ( $images ) ) {
 			foreach ( $images as $image ) {
 				echo "$image <br/>";
@@ -41,28 +42,33 @@ class RabbitViewCheck extends JViewLegacy
 			//Читаем данные из таблицы импорта и выполняем проверку.
 			$csv_data = file ( $TMP . $table_filename );	//Функция file_get_contents читает файл в одну строку, file - в массив строк
 			$this -> check_status = $model -> check ( $csv_data );
+			$this -> import_data = $this->get('ImportData');
 		} else {
 			echo "No table passed<br/>";
+			$this -> check_status = 3;
 		}
 		
 		//$this -> check_status = rand ( 0, 2 );
 		
+		// В зависимости от результатов проверки устанавливаем лайот и передаём в него ошибки/данные импорта
 		switch ( $this -> check_status ) {
 			case 3:
 				//$this -> message = "No input file, bleat!";
 				$this -> setLayout ( "error" );
 				break;
 			case 2:
-				$this->error_struct = $this->get('ErrorStruct');
+				$this -> error_data = $this->get('ErrorData');
+				$this -> logical_errors = $this -> import_data -> getLogicalErrors (  );
 				$this -> setLayout ( "error" );
 				break;
 			case 1:
-				$this->error_struct = $this->get('ErrorStruct');
+				$this -> error_data = $this->get('ErrorData');
+				$this -> logical_errors = $this -> import_data -> getLogicalErrors (  );
 				$this -> setLayout ( "warning" );
 				break;
 			case 0:
-				$this->import_struct = $this->get('ImportStruct');
-				RabbitHelper::save_variable ( 'import_struct', $this->import_struct );
+				// @QUESTION: Нужно ли сохранять в сессию?
+				RabbitHelper::save_variable ( 'import_data', $this->import_data );
 				break;
 			default:
 				JError::raiseError(500, "Unknown import check_status: " . $this -> check_status);

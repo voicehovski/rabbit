@@ -18,7 +18,19 @@ class RabbitControllerRabbit extends JControllerForm
 	public function import ( $cachable = false, $urlparams = false ) {
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=import', false) );
 	}
+
+/*		Приём данных импорта - таблиц и изображений
 	
+	@HOW_TO_USE: 
+	
+	@ACTIONS:
+	* Сохраняет загруженные файлы во временный каталог
+	* Сохраняет имена в сессии
+	* Если файлы не загружены, делает редирект на страницу ошибки
+	
+	@PROBLEMS:
+	* Путь сохранения временных файлов лучше вынести в общий конфиг
+*/	
 	public function check ( $cachable = false, $urlparams = false ) {
 		
 		$TMP = JPATH_SITE . '/tmp/';
@@ -65,13 +77,15 @@ class RabbitControllerRabbit extends JControllerForm
 	}
 
 	
-/*		Формирование запроса-get с параметром массивом
-
-	Прочесть потом можно приблизительно так:
-		//См. https://api.joomla.org/cms-3/classes/JInput.html#method_get
-		$jinput = JFactory::getApplication()->input;
-		$table_filename = $jinput->get('table_filename', '', 'string');
-		$images = $jinput->get('images', null, null);
+/*		Предыдущая версия приёма данных импорта - таблиц и изображений
+	
+	@HOW_TO_USE: Чтобы функция нормально отработала, она должна быть вызвана в запросе который загружает файлы
+	
+	@ACTIONS:
+	* Сохраняет загруженные файлы во временный каталог
+	* Проверяет сохранились ли файлы
+	* Передаёт имена загруженных файлов в запросе виду check
+	
 */
 	public function check_old ( $cachable = false, $urlparams = false ) {		
 		// Копируем загруженные файлы во временную директорию
@@ -97,6 +111,7 @@ class RabbitControllerRabbit extends JControllerForm
 		}
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=check&' . $images . 'table_filename=' . $table_filename, false) );
 	}
+
 	
 	public function rollback ( $cachable = false, $urlparams = false ) {
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit', false) );

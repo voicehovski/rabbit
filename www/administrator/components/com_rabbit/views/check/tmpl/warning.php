@@ -18,6 +18,10 @@ defined('_JEXEC') or die('Restricted access');
             <legend><?php echo JText::_('COM_RABBIT_CHECK_WARNING_DETAILS'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
+					<?php print_r ( $this -> error_data ); ?>
+					<?php print_r ( $this -> logical_errors ); ?>
+					<?php echo "Import data"; ?>
+					<?php print_r ( $this -> import_data ); ?>
                     <?php foreach ($this->form->getFieldset() as $field): ?>
                         <div class="control-group">
                             <div class="control-label"><?php echo "control-label"; ?></div>
