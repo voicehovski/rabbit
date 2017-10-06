@@ -18,10 +18,64 @@ defined('_JEXEC') or die('Restricted access');
             <legend><?php echo JText::_('COM_RABBIT_CHECK_WARNING_DETAILS'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
-					<?php print_r ( $this -> error_data ); ?>
-					<?php print_r ( $this -> logical_errors ); ?>
-					<?php echo "Import data"; ?>
-					<?php print_r ( $this -> import_data ); ?>
+					
+					<?php
+					
+						echo "<h2>Syntax errors</h2>";
+						foreach ( $productList -> products (  ) as $product ) {
+							$le = $product -> errors (  );// array
+							if ( ! empty ( $le ) ) {
+								// create row error makeup
+							}
+							foreach ( $product -> properties (  ) as $property ) {
+								$se = $property -> errors (  );
+								if ( ! empty ( $se ) ) {
+									echo $se -> rowIndex (  ); // ...
+									// or $poduct -> rowIndex ... $property -> colIndex (  ) ... $se -> comment (  )
+									// create cell error makeup
+								}
+							}
+						}
+						// print row error makeup
+						// print cell error makeup
+						
+					
+						echo "<table>";
+						echo "<tr>";
+						echo "<th>#</th>";
+						foreach ( $headeList as $header ) {
+							echo "<th>$header</th>";
+						}
+						echo "</tr>";
+						foreach ( $productList -> products (  ) as $product ) {
+							
+							$class = "";
+							$tooltip = "";
+							$le = $product -> errors (  );
+							if ( ! empty ( $le ) ) {
+								$tooltip = "title='" . array_reduce ( $le, function ( $carry, $item ) { return $carry . "::" . $item -> comment (  ) }, "" ) . "'";
+								$class = "class='wrong-row'";
+							}
+							echo "<tr $tooltip $class >";
+							echo "<td>" . $product -> rowIndex (  ) . "</td>";
+							
+							foreach ( $product -> properties (  ) as $property ) {
+								
+								$class = "";
+								$tooltip = "";
+								$se = $property -> errors (  );
+								if ( ! empty ( $se ) ) {
+									$class = "class='wrong-cell'";
+									$tooltip = "title='" . $se -> comment (  ) . "'";
+								}
+								echo "<td $tooltip $class >" . $property -> value (  ) . "</td>";
+							}
+							
+							echo "</tr>"
+						}
+						echo "</table>";
+					?>
+					
                     <?php foreach ($this->form->getFieldset() as $field): ?>
                         <div class="control-group">
                             <div class="control-label"><?php echo "control-label"; ?></div>

@@ -14,7 +14,7 @@ defined('_JEXEC') or die('Restricted access');
 class RabbitModelCheck extends JModelAdmin
 {
 	protected $import_data = null;
-	protected $error_data = null;
+	protected $csv_data = null;
 	/*
 		Возвращает структуру для импорта, сформированную из csv-данных в методе check. Если метод check обнаружил в csv-данных критические ошибки, возвращает пустую стуруктуру.
 		
@@ -31,10 +31,10 @@ class RabbitModelCheck extends JModelAdmin
 	/*
 		Возвращает структуру с инфо об ошибках, найденных в csv-данных в ходе работы метода check. Если метод check не обнаружил в данных ошибки, возвращает пустую стуруктуру.
 	*/
-	public function getErrorData ( $param = array() )
+	public function getCsvData ( $param = array() )
 	{
 		//$this -> error_data =  array ( "Error in input 1", "Error in input 2" );
-		return $this -> error_data;
+		return $this -> csv_data;
 	}
 	
 	/*		Проверка csv-данных на синтаксическую и логическую корректность
@@ -58,8 +58,9 @@ class RabbitModelCheck extends JModelAdmin
 		
 		if ( ! class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
 		
+		// Обертка для csv-данных. Проверяет ячейки, предоставляет доступ по кодам
 		try {
-			$csv = new csvHelper (
+			$this -> csv_data = new csvHelper (
 				$csv_data,
 				RabbitHelper::$PRODUCT_TABLE_VALIDATOR,
 				array ( 'delim' => RabbitHelper::$CSV_DELIMITER, 'encl' => RabbitHelper::$CSV_ENCLOSURE, 'esc' => RabbitHelper::$CSV_ESCAPE )
@@ -67,26 +68,12 @@ class RabbitModelCheck extends JModelAdmin
 		} catch ( Exception $e ) {
 			// @TODO: Обработать
 		}
-		 
-		$this -> error_data = new Report (  );
-		$this -> import_data = new ProductTree (  );
+		
+		// В конструкторе должна выполняться проверка структурных ошибок, иначе нужно сделать это отдельным методом, но тогода получится зависимо
+		$this -> import_data = new Group ( $this -> csv_data );
 
-		$error_status = 0;
-		
-		// Выполняем синтаксическую проверку, результаты вносим в error_data, получаем error_status
-		while ( $csv -> hasMoreRows (  ) ) {
-			$row = $csv -> getNextRow (  );
-			
-			if ( $row -> hasError (  ) ) {
-				$error_status = $row -> getWorstErrorStatus ( $error_status );
-				$this -> error_data -> add ( $row );
-			}
-			
-			$this -> import_data -> add ( $row );
-		}
-		
-		// Выполняем логическую проверку
-		$this -> import_data -> check (  );
+		// @NOTE: Если передать один массив, будет возвращен наибольший элемент
+		$error_status = max ( $this -> csv_data -> errors (  ) -> worstStatus (  ), $this -> import_data -> errors (  ) -> worstStatus (  ) );
 		
 		return $error_status;
 	}

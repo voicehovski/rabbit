@@ -31,23 +31,48 @@ defined('_JEXEC') or die('Restricted access');
 		<?php if ( $this -> error_data ) { ?>
 		<fieldset>
 			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список обнаруженных ошибок'; ?></legend>
-			<?php// foreach ( $this -> error_data as $error ) { ?>
-				<div>
-					<?php// echo $error; ?>
-				</div>
-			<?php// } ?>
+			<?php
+			$csv_errors = $this -> csv_data -> errors (  );
+			foreach ( $csv_errors as $row => $errorList ) {
+				echo "<div>{$error -> rowIndex (  )}:{$error -> colIndex (  )} - {$error -> value (  )} - [ {$error -> comment (  )} ]</div>";
+			}
+			?>
         </fieldset>
 		<?php } ?>
 		<?php if ( $this -> import_data ) { ?>
         <fieldset>
 			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список изменений, которые будут внесены'; ?></legend>
-			<?php// foreach ( $this -> import_data as $is ) { ?>
-				<div>
-					<?php //echo implode ( " :: ", $is ); ?>
-					<?php print_r ( $this -> import_data ); ?>
-					<?php print_r ( $this -> logical_errors ); ?>
-				</div>
-			<?php } ?>
+			
+			<table>
+			<tr><th><?php implode ( "</th><th>", $this -> csv_data -> headers (  ) ); ?></th></tr>
+			
+			<?php
+			// create csv (file, validator) check and make index
+			// 
+			// csv_data -> assocDataList (  ), assocData -> get ( 'code' );
+			foreach ( $this -> csv_data -> data (  ) as $rowIndex => $dataLine ) {	//data should return 2xarray of string
+				
+				$mle = $this -> multilineErrors -> getByRowIndex ( $rowIndex );	//has to implement toString
+				
+				if ( ! empty ( $mle ) ) { 
+					echo "<tr class='wrong-row' title='$mle'>";
+				} else { 
+					echo "<tr>";
+				}
+				
+				foreach ( $dataLine as $colIndex => $dataCell ) {
+					
+					$se = $this -> csv_data -> error ( $rowIndex, $colIndex );	//has to implement toString
+					
+					if ( ! empty ( $se ) ) {
+						echo "<td class='wrong-cell' title='$se'>$dataCell</td>";
+					} else { 
+						echo "<td>$dataCell</td>"
+					} 
+				}
+				</tr>
+			}
+			?>
         </fieldset>
 		<?php } ?>
     </div>

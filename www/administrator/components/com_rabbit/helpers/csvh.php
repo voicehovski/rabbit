@@ -22,11 +22,16 @@ class csvHelper {
 	protected $headers_row_index = -1;
 	protected $current_index = -1;
 	protected $data_size = 0;
+	
 	protected $data;
+	protected $headers;
+	protected $rows;
+	protected $errors;
 	
 	protected $config;
 	
 	public $validator;
+	public $indexator;
 	
 	public function __construct ( $csv_data, $validator_data, $config ) {
 	
@@ -51,31 +56,77 @@ class csvHelper {
 			continue;
 		}
 		
-		$this -> headers_row_index = $ndex;	// Первую не пустую строку считаем заголовками
-		$this -> current_index = $index + 1;	// Следующую строку считаем данными
-		$this -> data_size = count ( $csv_data );
-		$this -> data = $csv_data;
+		$this -> headers_row_index = $index;	// Первую не пустую строку считаем заголовками
+		$this -> headers = str_getcsv ( $csv_data [$index], $config ['delim'], $config ['encl'], $config ['esc'] );
 		
-		$table_headers = str_getcsv ( $csv_data [$index], $config ['delim'], $config ['encl'], $config ['esc'] );
-		$this -> validator = new CsvValidator ( $validator_data, $table_headers );	
+		$this -> current_index = $index + 1;	// Следующую строку считаем данными
+		//$this -> data_size = count ( $csv_data );	нет, возможно размер будет меньше
+		
+		while ( $csv_data [++$index] ) {
+			if ( $index == count ( $csv_data ) ) {
+				break;
+			}
+			if ( ! $csv_data [$index] ) {
+				continue;
+			}
+			$this -> data [$index] = str_getcsv ( $csv_data [$index], $config ['delim'], $config ['encl'], $config ['esc'] );
+		}
+		
+		$this -> validator = new CsvValidator ( $validator_data, $this -> headers );	
+		//$this -> indexator = new CsvIndexator ( $validator_data, $this -> headers );
+
+		$this -> rows = $this -> create_rows (  );
+		$this -> errors = $this -> check_rows ( $this -> /*rows*/data );
+		
 		$this -> config = $config;
 	}
-	
-	public function hasMoreRows (  ) {
-		return $this -> current_index < $this -> data_size;
+
+	public function data () {	//raw 2x array
+		return $this -> data;
 	}
 	
-	public function getNextRow (  ) {
-		return $this -> validator -> check ( 
-			str_getcsv (
-				$this -> data [$this -> current_index],
-				$this -> config ['delim'],
-				$this -> config ['encl'],
-				$this -> config ['esc']
-			),
-			$this -> current_index++
-		);
+	public function headers () {	//headers array
+		return $this -> headers;
 	}
+	
+	public function errors () {
+		return $this -> errors;
+	}
+	
+	public function rows (  ) {
+		return $this -> rows;
+	}
+	
+	public function code_list () {} //code => index	
+	
+	// @TODO: может проверять как исходные данные (текущая версия), так и ассоциативные массивы. Наверно лучше ассоциативные
+	// @TODO: можно не разбивать проверку и создание рядков на две функции ( и делать в каждой цикл ), а вынести общий цикл в конструктор, а влидатор будет только дополнять свой массив в соответствии с заголовками
+	// @TODO: валидация данных и индексация заголовков - все-таки разные вещи. Можно попробовать разделить 
+	protected function check_rows ( & $rows ) {
+		
+		$errors = array (  );
+		
+		foreach ( $rows as $index => $row ) {
+			$error = $this -> validator -> check ( $row, $index ); //check may return boolean and than getError will return error object
+			if ( ! empty ( $error ) ) {
+				$errors [] = $error;
+			}
+		}
+		
+		return $errors;
+	}
+	
+	protected function create_rows (  ) {
+		
+		$rows = array (  );
+		
+		foreach ( $this -> data as $index => $csv_row ) {
+			$rows [] = $this -> validator -> createAssoc ( $csv_row );	//We assume createAssoc always return right value but it may not
+		}
+		
+		return $rows;
+	}
+	
 }
 
 
@@ -114,7 +165,7 @@ class CsvValidator {
 	}
 
 	
-/*		Проверяет корректность данных csv, в соответствии с валидатором
+/*		Проверяет корректность данных csv
 
 	@HOW_TO_USE: Передать массив строк. Порядок значений должен соответствовать строке заголовков
 	
@@ -134,20 +185,29 @@ class CsvValidator {
 */
 	public function check ( $csv_row, $index ) {
 	
-		$row = new CsvRow ( $index );
+		$error = null;
 	
 		foreach ( $this -> validator_data as $header_key => $header_data ) {
 			
 			if ( ! preg_match ( $header_data ['pattern'], $csv_row [$header_data ['index']], $matches ) ) {
 				
 				//Данные в ячейке не корректны. Записываем в ошибки
-				$row -> setErrorStatus ( $header_key, $header_data ['error_status'] );
+				$error = new CellCsvError ( $index, $header_data ['index'], $csv_row [$header_data ['index']], $header_data ['pattern'] );
 			}
-			
-			$row -> setValue ( $header_key, $csv_row [$header_data ['index']] );
 		}
 		
-		return $row;
+		return $error;
+	}
+	
+	public function createAssoc ( $csv_row ) {
+		
+		$assoc = array (  );
+		
+		foreach ( $this -> validator_data as $header_key => $header_data ) {
+			$assoc [$header_key] = $csv_row [$header_data ['index']] );
+		}
+		
+		return $assoc;
 	}
 }
 

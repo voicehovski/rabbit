@@ -42,7 +42,9 @@ class RabbitViewCheck extends JViewLegacy
 			//Читаем данные из таблицы импорта и выполняем проверку.
 			$csv_data = file ( $TMP . $table_filename );	//Функция file_get_contents читает файл в одну строку, file - в массив строк
 			$this -> check_status = $model -> check ( $csv_data );
-			$this -> import_data = $this->get('ImportData');
+			$this -> csv = $this -> get ( 'Csv' );
+			$this -> import_data = $this -> get ( 'ImportData' );
+			//check_status = worst check_status, import_data->check_status
 		} else {
 			echo "No table passed<br/>";
 			$this -> check_status = 3;
@@ -57,21 +59,21 @@ class RabbitViewCheck extends JViewLegacy
 				$this -> setLayout ( "error" );
 				break;
 			case 2:
-				$this -> error_data = $this->get('ErrorData');
-				$this -> logical_errors = $this -> import_data -> getLogicalErrors (  );
+				$this -> cellErrors = $this -> csv -> errors (  );
+				$this -> structuralErrors = $this -> import_data -> errors (  );
 				$this -> setLayout ( "error" );
 				break;
 			case 1:
-				$this -> error_data = $this->get('ErrorData');
-				$this -> logical_errors = $this -> import_data -> getLogicalErrors (  );
+				$this -> cellWarnings = $this -> csv -> errors (  );
+				$this -> structuralWarnings = $this -> import_data -> errors (  );
 				$this -> setLayout ( "warning" );
 				break;
 			case 0:
 				// @QUESTION: Нужно ли сохранять в сессию?
-				RabbitHelper::save_variable ( 'import_data', $this->import_data );
+				RabbitHelper::save_variable ( 'import_data', $this -> import_data );
 				break;
 			default:
-				JError::raiseError(500, "Unknown import check_status: " . $this -> check_status);
+				JError::raiseError ( 500, "Unknown import check_status: " . $this -> check_status );
 				return false;
 		}
  
