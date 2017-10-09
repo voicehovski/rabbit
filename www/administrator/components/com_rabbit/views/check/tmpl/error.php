@@ -18,11 +18,20 @@ defined('_JEXEC') or die('Restricted access');
             <legend><?php echo JText::_('COM_RABBIT_CHECK_ERROR_DETAILS'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
+				
+					<?php
+						if ( $this -> check_status > 2 ) {
+							
+							echo "Common data error";
+							return;
+						}
+					?>
+				
 					<?php
 					echo "<h2>Summary</h2>";
 					echo "<h3>Cell errors</h3>";
 					// @IDEA: cellErrors can be a simple array, so that items method is exess. In this case method getByRCIndexes is redundant too
-					foreach ( $this -> cellErrors -> items (  ) as & $error ) {
+					foreach ( $this -> cellErrors as & $error ) {
 						echo "{$error -> row (  )}:{$error -> column (  )} - {$error -> value (  )} - [ {$error -> comment (  )} ]";
 						echo "<br/>";
 					}
@@ -30,12 +39,12 @@ defined('_JEXEC') or die('Restricted access');
 					
 					
 					echo "<h3>Structural errors</h3>";
-					foreach ( $this -> structuralErrors -> items (  ) as & $error ) {	//array
+					foreach ( $this -> structuralErrors as & $error ) {	//array
 						$indexes = $error -> rowIndexes (  );	//should always return array of whole wrong indexes
 						if ( count ( $indexes ) == 1 ) {
 							$rows = $indexes [0];
 						} else {
-							$rows =	$error -> isRange (  ) ? implode ( ", ", $indexes ) : indexes[0] . " - " . $indexes[count ( $indexes )];
+							$rows =	$error -> isRange (  ) ? implode ( ", ", $indexes ) : $indexes[0] . " - " . $indexes[count ( $indexes )];
 						}
 						//value (  ) can contain sku, product code, or product code with color or something else, but has to contain something
 						echo "$rows : {$error -> value (  )} [ {$error -> comment (  )} ]";
@@ -56,13 +65,17 @@ defined('_JEXEC') or die('Restricted access');
 						$sErrors = $this -> structuralErrors -> getByRowIndex ( $i );	//array
 						
 						if ( ! empty ( $sErrors ) ) {
-							$tooltip = array_reduce ( $sErrors, function ( $carry, $item ) { return $carry . "::" . $item -> comment (  ) }, count ( $sErrors ) );
+							$tooltip = array_reduce (
+								$sErrors,
+								function ( $carry, $item ) { return $carry . "::" . $item -> comment (  ); },
+								count ( $sErrors )
+							);
 							echo "<tr class='wrong-row' title='$tooltip'>";
 						} else {	// @NOTE: remove this for show wrong rows only. Another way - hide rows with css, assigning a class here
 							echo "<tr>";
 						}
 						
-						for ( $row as $j => $cell ) {
+						foreach ( $row as $j => $cell ) {
 							
 							$cError = $this -> cellErrors -> getByRCIndexes ( $i, $j );
 							
@@ -76,57 +89,9 @@ defined('_JEXEC') or die('Restricted access');
 						
 						echo "</tr>";
 					}
-					/*
-					foreach ( $productList as $product ) {
-						echo "<tr>";
-						foreach ( $product as $property ) {
-							echo "<td>$property</td>";
-						}
-						echo "</tr>";
-					}
-					*/
 					echo "</table>";
 					?>
 					
-					<?php
-						foreach ( $this -> import_data -> get (  ) as $gid => $group ) {
-							echo "<h2>$gid</h2>";
-							echo "<table>";
-							foreach ( $group -> getAll (  ) as $product ) {
-								echo "<tr>";
-								foreach ( $product -> get (  ) as $name => $value ) {
-									echo "<td>$value</td>";
-								}
-								echo "</tr>";
-							}
-							echo "</table>";
-						}
-					?>
-					<h2>Errors</h2>
-					<?php foreach ( $this -> error_data -> error_data as $i => $e ) { ?>
-					<div>
-					<?php
-						if ( empty ( $e ) ) {
-							continue;
-						}
-						echo "[$i]:";
-						foreach ( $e as $eei => $ee ) {
-							echo "[$eei]: $ee ";
-						}
-					?>
-					</div>
-					<?php } ?>
-					<h2>Logical errors</h2>
-					<?php foreach ( $this -> logical_errors as $li => $le ) { ?>
-					<div>
-					<?php
-						echo "[$li]";
-						foreach ( $le as $lli => $lle ) {
-							echo "[$lli]: $lle ";
-						}
-					?>
-					</div>
-					<?php } ?>
                 </div>
             </div>
         </fieldset>

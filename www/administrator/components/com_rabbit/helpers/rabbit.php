@@ -138,7 +138,7 @@ abstract class RabbitHelper extends JHelperContent {
 		Поле name должно соответствать заголовку таблицы импорта
 		Поле pattern - регулярное выражение для проверки данных
 	*/
-	static $PRODUCT_TABLE_VALIDATOR = array (
+	static $PRODUCT_CSV_META_TEMPLATE = array (
 		'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "#(\\d+)/(\\d+)/(\\d+)#", 'error_status' => 2 ),
 		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "/.*/", 'error_status' => 2 ),
 		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "/.*/", 'error_status' => 2 ),

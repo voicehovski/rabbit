@@ -14,6 +14,10 @@ class RabbitViewCheck extends JViewLegacy
 {
 	//protected $form = null;
 	protected $check_status = null;
+	protected $cellErrors = array (  );
+	protected $structuralErrors = array (  );
+	protected $importData = null;
+	protected $csv = null;
 
 	public function display($tpl = null)
 	{
@@ -22,6 +26,7 @@ class RabbitViewCheck extends JViewLegacy
 		$this->form = $this->get('Form');
 		
 		$model = $this -> getModel ( 'check' );
+		if ( ! class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
 		
 		// Получаем имена загруженных файлов
 		$table_filename = RabbitHelper::restore_variable ( 'uploaded_table' );
@@ -32,21 +37,68 @@ class RabbitViewCheck extends JViewLegacy
 		// @TODO: Скопировать изображения в нужный каталог. При необходимости преобразовать
 		if ( $images && is_array ( $images ) ) {
 			foreach ( $images as $image ) {
-				echo "$image <br/>";
+				echo "DEBUG: $image <br/>";
 			}
 		} else {
-			echo "No images passed<br/>";
+			echo "DEBUG: No images passed<br/>";
 		}
 		
 		if ( $table_filename ) {
+			// @NOTE: Функция file_get_contents читает файл в одну строку, file - в массив строк
 			//Читаем данные из таблицы импорта и выполняем проверку.
-			$csv_data = file ( $TMP . $table_filename );	//Функция file_get_contents читает файл в одну строку, file - в массив строк
-			$this -> check_status = $model -> check ( $csv_data );
-			$this -> csv = $this -> get ( 'Csv' );
-			$this -> import_data = $this -> get ( 'ImportData' );
-			//check_status = worst check_status, import_data->check_status
+			$rawCsv = file ( $TMP . $table_filename );
+			$products = new ProductGroup (  );
+
+			// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
+			$csv = new Csv ( $rawCsv, array ( ';', '', '' ) );
+			$csvMeta = new CsvMetadata ( RabbitHelper::$PRODUCT_CSV_META_TEMPLATE, $csv -> headers (  ) );
+			
+			foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
+				
+				// Проверяем каждую ячейку регулярным выражением
+				// В строке может быть несколько ошибок, поэтому checkCells возвращает массив и сливаем его с существующим
+				$errors = $csvMeta -> checkCells ( $row, $rowIndex );
+				if ( ! empty ( $errors ) ) {
+					$this -> cellErrors [] = array_merge ( $this -> cellErrors, $errors );	
+					// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
+				}
+
+				// Формируем ассоциативный массив и фиксируем ошибку если не удалось
+				$assocRow = $csvMeta -> createAssoc ( $row );
+				if ( empty ( $assocRow ) ) {
+					$structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv" );
+					continue;
+				}
+				
+				
+				// @QUESTION: where should we catch errors like 'missing sku'? As critical error in cellErrors?
+				// @QUESTION: а как если по артикулу цвет и размер не определяются?
+				// Определяем по артикулу цвет и размер товара.
+				$productVariantProperties = $csvMeta -> getProductVariantProperties ( $assocRow ['sku'] );//code=> color=> size=>
+				if ( ! $productVariantProperties ) {
+					$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku' );
+					continue;
+				}
+
+				// @QUESTION: Нужно ли сохранять ассоциативные массивы или они больше не понадобятся?
+				// Формируем структуру данных для дальнейшего импорта
+				$products -> add ( new ProductData ( array_merge ( $productVariantProperties, $assocRow ) ) );
+				
+			}
+			
+			// Струкрурные ошибки можно найти только в завершенном списке продукции
+			$structuralErrors = array_merge ( $structuralErrors, $csvMeta -> checkStructural ( $products ) );
+			
+			$this -> importData = $products;
+			$this -> csv = $csv;
+			
+			// @DEBUG: Now one should identify the worst error status for choosing corresponding layout. Something like check_status = worst getWorstStatus ( structuralErrors ), getworstStatus ( cellErrors)
+			$this -> check_status = 2;
+			 
+			//++++++++++++++++++++++++++++++++++++++++
+			
 		} else {
-			echo "No table passed<br/>";
+			echo "DEBUG: No table passed<br/>";
 			$this -> check_status = 3;
 		}
 		
@@ -59,18 +111,17 @@ class RabbitViewCheck extends JViewLegacy
 				$this -> setLayout ( "error" );
 				break;
 			case 2:
-				$this -> cellErrors = $this -> csv -> errors (  );
-				$this -> structuralErrors = $this -> import_data -> errors (  );
+				$this -> structuralErrors = $structuralErrors;
 				$this -> setLayout ( "error" );
 				break;
 			case 1:
-				$this -> cellWarnings = $this -> csv -> errors (  );
-				$this -> structuralWarnings = $this -> import_data -> errors (  );
+				$this -> cellWarnings = $this -> cellErrors;
+				$this -> structuralWarnings = $structuralErrors;
 				$this -> setLayout ( "warning" );
 				break;
 			case 0:
 				// @QUESTION: Нужно ли сохранять в сессию?
-				RabbitHelper::save_variable ( 'import_data', $this -> import_data );
+				RabbitHelper::save_variable ( 'import_data', $this -> importData );
 				break;
 			default:
 				JError::raiseError ( 500, "Unknown import check_status: " . $this -> check_status );
