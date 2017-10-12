@@ -21,6 +21,33 @@ class RabbitViewCheck extends JViewLegacy
 
 	public function display($tpl = null)
 	{
+		
+		/*
+			Добавляем метаданные
+		*/
+		$doc = &JFactory::getDocument();
+		/* Создает пустой метатег generator. Например, на тот случай, если вы хотите скрыть, что сайт сделан на Joomla. */
+		$doc->setGenerator ( 'MyNiceGenerator' ); 
+		/* Задает метатег description */
+		$doc->setDescription ( 'Custom desc' ); 
+		/* Задает тег title */
+		$doc->setTitle ( 'Custom title' ); 
+		/* Создает пользовательский метатег */
+		//http-equiv="content-type" content="text/html; charset=utf-8"
+		$name = "content-type";
+		$content = "text/html; charset=utf-8";
+		$doc->setMetaData($name,$content); 
+		/* привязывает файл таблицы стилей */
+		// $doc->addStyleSheet('/path/to/file') 
+		/* привязывает файл javascript или скрипта на каком-либо другом языке */
+		// $doc->addScript('/path/to/file') 
+		/* добавляет пользовательский тег. Можно использовать для вставки любого тега в секцию head. */
+		// $doc->addCustomTag(); 
+		/* Добавляет кусок кода javascript. Разместит код javascript и обрамит тегом <script>. Joomla размещает их после внедрения скриптов addScript(). */
+		// $doc->addScriptDeclaration() 
+		/* Добавляет кусок пользовательского стиля css. Внедряет css-стили и обрамляет их тегом <style>. Joomla разместит их после стилей addStyleSheet(). */
+		// $doc->addStyleDeclaration()
+		
 		$TMP = JPATH_SITE . '/tmp/';	// Путь загрузки файлов. Аналогичная переменная в контроллере
 		
 		$this->form = $this->get('Form');
@@ -50,7 +77,7 @@ class RabbitViewCheck extends JViewLegacy
 			$products = new ProductGroup (  );
 
 			// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
-			$csv = new Csv ( $rawCsv, array ( ';', '', '' ) );
+			$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
 			$csvMeta = new CsvMetadata ( RabbitHelper::$PRODUCT_CSV_META_TEMPLATE, $csv -> headers (  ) );
 			
 			foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
@@ -59,14 +86,14 @@ class RabbitViewCheck extends JViewLegacy
 				// В строке может быть несколько ошибок, поэтому checkCells возвращает массив и сливаем его с существующим
 				$errors = $csvMeta -> checkCells ( $row, $rowIndex );
 				if ( ! empty ( $errors ) ) {
-					$this -> cellErrors [] = array_merge ( $this -> cellErrors, $errors );	
+					$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
 					// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
 				}
 
 				// Формируем ассоциативный массив и фиксируем ошибку если не удалось
 				$assocRow = $csvMeta -> createAssoc ( $row );
 				if ( empty ( $assocRow ) ) {
-					$structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv" );
+					$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv" );
 					continue;
 				}
 				
@@ -82,12 +109,12 @@ class RabbitViewCheck extends JViewLegacy
 
 				// @QUESTION: Нужно ли сохранять ассоциативные массивы или они больше не понадобятся?
 				// Формируем структуру данных для дальнейшего импорта
-				$products -> add ( new ProductData ( array_merge ( $productVariantProperties, $assocRow ) ) );
+				$products -> add ( new ProductData ( $rowIndex, array_merge ( $productVariantProperties, $assocRow ) ) );
 				
 			}
 			
 			// Струкрурные ошибки можно найти только в завершенном списке продукции
-			$structuralErrors = array_merge ( $structuralErrors, $csvMeta -> checkStructural ( $products ) );
+			$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $products ) );
 			
 			$this -> importData = $products;
 			$this -> csv = $csv;
@@ -111,7 +138,6 @@ class RabbitViewCheck extends JViewLegacy
 				$this -> setLayout ( "error" );
 				break;
 			case 2:
-				$this -> structuralErrors = $structuralErrors;
 				$this -> setLayout ( "error" );
 				break;
 			case 1:

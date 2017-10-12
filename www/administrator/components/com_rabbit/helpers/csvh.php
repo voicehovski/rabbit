@@ -101,10 +101,13 @@ class CsvMetadata {
 	protected $metadata;
 
 	public function __construct ( $metadata_template, $headers ) {
+		echo "DEBUG: " . implode ( "; ", $headers ) . "<br/>";
+		print_r ($headers);
 		for ( $i = 0; $i < count ( $headers ); $i++ ) {
 			//Используем здесь ссылку чтобы можно было изменять элементы массива
 			foreach ( $metadata_template as &$h ) {
 				//! strcasecmp хуёво сравнивает мультибайтные строки без учета регистра, а именно - не сравнивает
+				echo "DEBUG: {$headers[$i]} == $h[name] <br/>";
 				if ( strcasecmp ( $headers [$i], $h ['name'] ) == 0 ) {
 					if ( $h ['index'] != -1 ) {
 						//! Ошибка. Такой заголовок уже зарегистрирован. Надо что-то делать
@@ -193,23 +196,22 @@ class CsvMetadata {
 				case 0:
 					// Warning, no main product marker. Use anyone as the main
 					// @QUESTION: Правильно ли будет запихать идентификатор группы в саму группу? А номера строк?
-					// @TODO: Put into product line number and make method for column getting in group
-					$erors [] = new StructuralError ( $group -> properties ( 'line' ), $code, "Warning, no main product marker in product group: $code" );
+					$erors [] = new StructuralError ( $group -> rowIndexes (  ), $code, "Warning, no main product marker in product group: $code" );
 					break;
 				default:
 					// Warning, more than one marker. Use last with marker as the main
-					$errors [] = new StructuralError ( $mainProducts -> properties ( 'line' ), $code, "Warning, more than one marker in product group: $code" );
+					$errors [] = new StructuralError ( $mainProducts -> rowIndexes (  ), $code, "Warning, more than one marker in product group: $code" );
 				
 			}
 		}
 		unset ( $codeGroups );
 		unset ( $group );
 		
-		$skuGroups = $productGroups -> groupBy ( 'sku' );
+		$skuGroups = $productGroup -> groupBy ( 'sku' );
 		foreach ( $skuGroups as $sku => $group ) {
 			
 			if ( count ( $group -> getAll (  ) ) > 1 ) {
-				$errors [] = new StructuralError ( $group -> properties ( 'line' ), $sku, "Warning, same sku: $sku" );
+				$errors [] = new StructuralError ( $group -> rowIndexes (  ), $sku, "Warning, same sku: $sku" );
 			}
 		}
 		unset ( $skuGroups );
@@ -317,10 +319,12 @@ class StructuralError {
 class ProductData {
 	
 	protected $row;
+	protected $index;
 	
-	public function __construct ( $assocCsvRow ) {
+	public function __construct ( $rowIndex, $assocCsvRow ) {
 		
-		$this -> row = $validCsvRow;
+		$this -> row = $assocCsvRow;
+		$this -> index = $rowIndex;
 	}
 
 /*		Возвращает свойство продукта
@@ -341,6 +345,15 @@ class ProductData {
 		
 		return $this -> row;
 	}
+	
+	public function contains ( $propertyName ) {
+		return array_key_exists ( $propertyName, $row );
+	}
+	
+	public function getRowIndex (  ) {
+		return $this -> index;
+	}
+	
 }
 
 /*		Структура для логической проверки данных о товарах и организации доступа к ним.
@@ -367,6 +380,83 @@ class ProductGroup {
 	}
 	
 	protected $products = array (  );	//ProductData []
+	
+/*		Возвращает одно свойство всех элементов группы в массиве
+
+	@HOW_TO_USE: Передать имя свойства в соответствии с метаданными csv
+	
+	@ACTIONS: 
+	* Проверяет существует ли свойство в в элементах группы
+	* В цикле формирует массив свойств
+	
+	@RETURN: массив со свойствами или null если такого свойства на существует в группе
+	
+	@PROBLEMS:
+	* Получается не эффективненько. Нужно помнить что метод следует использовать именно если нужна тупо одна колонка. Иначе лучше where  и цикл
+	* Проверка на существование ключа основана на проверке первого продукта. Все элементы должны содержать один набор ключей или допустимо отсутствие некоторых ключей у некоторых элементов (и тогда в соответствующих позициях возвращать null)? Нужно или проверять ключи при добавлении в группу или уже при извлечении?
+	
+	@IDEAS:
+	*
+*/			
+	public function properties ( $propertyName ) {
+		
+		if ( ! $this -> contains ( $propertyName ) ) {
+			return null;
+		}
+		
+		$properties = array (  );
+		foreach ( $this -> getAll (  ) as  $p ) {
+			$properties [] = $p -> get ( $propertyName );
+		}
+		
+		return $properties;
+	}
+	
+	/*		Возвращает номера строк элементов группы в соответствии с исходными данными csv
+
+	@HOW_TO_USE:
+	
+	@ACTIONS:
+	
+	@RETURN: массив номерами строк в соответствии с исходными данными csv
+	
+	@PROBLEMS:
+	* Нужно ли проверять индексы на совпадение?
+	
+	@IDEAS:
+	*
+*/			
+	public function rowIndexes (  ) {
+		
+		$indexes = array (  );
+		foreach ( $this -> getAll (  ) as  $p ) {
+			$indexes [] = $p -> getRowIndex (  );
+		}
+		
+		return $indexes;
+	}
+	
+/*		Проверяет, есть ли в элементах группы свойство
+
+	@HOW_TO_USE: Передать имя свойства в соответствии с метаданными csv
+	
+	@ACTIONS: 
+	*
+	
+	@RETURN:
+	
+	@PROBLEMS:
+	* Как проверять? Есть ли хоть в одном элементе? Есть ли во всех? Тогда, наверно, лучше вести список свойств.
+	
+	@IDEAS:
+	*
+*/
+	public function contains ( $propertyName ) {
+		if ( ! isset ( $products [0] ) ) {
+			return false;
+		}
+		return $products [0] -> contains ( $propertyName );
+	}
 	
 /*
 	

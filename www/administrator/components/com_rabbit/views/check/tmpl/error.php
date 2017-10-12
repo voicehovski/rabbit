@@ -60,9 +60,16 @@ defined('_JEXEC') or die('Restricted access');
 					echo "</tr>";
 					
 					// @QUESTION: make $row and $cell links?
+					// @TODO: здесь пиздей. Нужно как-то привести в порядок
 					foreach ( $this -> csv -> data (  ) as $i => $row ) {
 						
-						$sErrors = $this -> structuralErrors -> getByRowIndex ( $i );	//array
+						//$sErrors = $this -> structuralErrors -> getByRowIndex ( $i );	//array
+						$sErrors = array_filter (
+							$this -> structuralErrors,
+							function ( $elem ) use ( $i ) {
+								return in_array ( $i, $elem -> rowIndexes (  ) );
+							}
+						);	//array
 						
 						if ( ! empty ( $sErrors ) ) {
 							$tooltip = array_reduce (
@@ -77,10 +84,18 @@ defined('_JEXEC') or die('Restricted access');
 						
 						foreach ( $row as $j => $cell ) {
 							
-							$cError = $this -> cellErrors -> getByRCIndexes ( $i, $j );
-							
+							//$cError = $this -> cellErrors -> getByRCIndexes ( $i, $j );
+							$cError = array_filter (
+								$this -> cellErrors,
+								function ( $elem ) use ( $i, $j ) {
+									return $elem -> row (  ) == $i && $elem -> column (  ) == $j;
+								}
+							);
+							// array_filter возвращает массив, так что нужно выделить скалярное значение
+							// Но array_filter сохраняет индексы, поэтому нужно извлекать через жопу
+							$cError = array_reduce ( $cError, function ( $carry, $item ) { return $item; } );
 							if ( ! empty ( $cError ) ) {
-								$tooltip = $se -> comment (  );
+								$tooltip = $cError -> comment (  );
 								echo "<td class='wrong-cell' title='$tooltip'>$cell</td>";
 							} else {
 								echo "<td>$cell</td>";
