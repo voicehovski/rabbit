@@ -28,51 +28,42 @@ defined('_JEXEC') or die('Restricted access');
                 </div>
             </div>
         </fieldset>
-		<?php if ( $this -> error_data ) { ?>
-		<fieldset>
-			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список обнаруженных ошибок'; ?></legend>
-			<?php
-			$csv_errors = $this -> csv_data -> errors (  );
-			foreach ( $csv_errors as $row => $errorList ) {
-				echo "<div>{$error -> rowIndex (  )}:{$error -> colIndex (  )} - {$error -> value (  )} - [ {$error -> comment (  )} ]</div>";
-			}
-			?>
-        </fieldset>
-		<?php } ?>
-		<?php if ( $this -> import_data ) { ?>
+		
+		<?php if ( $this -> csv ) { ?>
         <fieldset>
-			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список изменений, которые будут внесены'; ?></legend>
-			
-			<table>
-			<tr><th><?php implode ( "</th><th>", $this -> csv_data -> headers (  ) ); ?></th></tr>
+			<h2><legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список изменений, которые будут внесены'; ?></legend></h2>
 			
 			<?php
-			// create csv (file, validator) check and make index
-			// 
-			// csv_data -> assocDataList (  ), assocData -> get ( 'code' );
-			foreach ( $this -> csv_data -> data (  ) as $rowIndex => $dataLine ) {	//data should return 2xarray of string
-				
-				$mle = $this -> multilineErrors -> getByRowIndex ( $rowIndex );	//has to implement toString
-				
-				if ( ! empty ( $mle ) ) { 
-					echo "<tr class='wrong-row' title='$mle'>";
-				} else { 
-					echo "<tr>";
-				}
-				
-				foreach ( $dataLine as $colIndex => $dataCell ) {
-					
-					$se = $this -> csv_data -> error ( $rowIndex, $colIndex );	//has to implement toString
-					
-					if ( ! empty ( $se ) ) {
-						echo "<td class='wrong-cell' title='$se'>$dataCell</td>";
-					} else { 
-						echo "<td>$dataCell</td>"
-					} 
-				}
-				</tr>
-			}
+				/*
+					Здесь выводим только изменения которые будут внесены
+					В сводном виде
+					Полная таблица изменений
+				*/
 			?>
+			
+			<?php
+				echo "<h2>Full product table</h2>";
+				echo "<table class='full-product-list' border='1'><tr>";
+				foreach ( $this -> csv -> headers (  ) as $header ) {
+					echo "<th>$header</th>";
+				}
+				echo "</tr>";
+
+				foreach ( $this -> csv -> data (  ) as $i => $row ) {
+					
+					echo "<tr>";
+					
+					foreach ( $row as $j => $cell ) {
+						
+						$cellContent = mb_strlen ( $cell ) < 128 ? $cell : mb_substr ( $cell, 0, 128, "UTF-8" );
+						echo "<td>$cellContent</td>";
+					}
+					
+					echo "</tr>";
+				}
+				echo "</table>";
+			?>
+			
         </fieldset>
 		<?php } ?>
     </div>

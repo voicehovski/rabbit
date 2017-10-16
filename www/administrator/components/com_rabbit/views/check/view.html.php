@@ -62,7 +62,8 @@ class RabbitViewCheck extends JViewLegacy
 		// Проверка отсутствия файлов происходит в контроллере, так что здесь хоть чтото должно быть
 		// @IDEA: Можно ничего не проверять и не передавать, а просто искать в каталоге загрузки новые файлы
 		// @TODO: Скопировать изображения в нужный каталог. При необходимости преобразовать
-		if ( $images && is_array ( $images ) ) {
+		
+		if ( $images && is_array ( $images ) && ! empty ( $images ) ) {
 			foreach ( $images as $image ) {
 				echo "DEBUG: $image <br/>";
 			}
@@ -78,7 +79,10 @@ class RabbitViewCheck extends JViewLegacy
 
 			// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
 			$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
-			$csvMeta = new CsvMetadata ( RabbitHelper::$PRODUCT_CSV_META_TEMPLATE, $csv -> headers (  ) );
+			
+			//$csvMeta = new CsvMetadata ( RabbitHelper::$PRODUCT_CSV_META_TEMPLATE, $csv -> headers (  ) );
+			// @TODO: Здесь нужно определить тип продукции (чекбокс или по заголовкам/категориям) и создать соответствующий объект. Пользователей и заказы, видимо лучше импортировать в другом виде
+			$csvMeta = CsvMetadata::createProductMetadata ( $csv -> headers (  ) );
 			
 			foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
 				
@@ -93,7 +97,7 @@ class RabbitViewCheck extends JViewLegacy
 				// Формируем ассоциативный массив и фиксируем ошибку если не удалось
 				$assocRow = $csvMeta -> createAssoc ( $row );
 				if ( empty ( $assocRow ) ) {
-					$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv" );
+					$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv", 2 );
 					continue;
 				}
 				
@@ -103,7 +107,7 @@ class RabbitViewCheck extends JViewLegacy
 				// Определяем по артикулу цвет и размер товара.
 				$productVariantProperties = $csvMeta -> getProductVariantProperties ( $assocRow ['sku'] );//code=> color=> size=>
 				if ( ! $productVariantProperties ) {
-					$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku' );
+					$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku', 2 );
 					continue;
 				}
 
@@ -119,8 +123,7 @@ class RabbitViewCheck extends JViewLegacy
 			$this -> importData = $products;
 			$this -> csv = $csv;
 			
-			// @DEBUG: Now one should identify the worst error status for choosing corresponding layout. Something like check_status = worst getWorstStatus ( structuralErrors ), getworstStatus ( cellErrors)
-			$this -> check_status = 2;
+			$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 			 
 			//++++++++++++++++++++++++++++++++++++++++
 			
@@ -130,6 +133,8 @@ class RabbitViewCheck extends JViewLegacy
 		}
 		
 		//$this -> check_status = rand ( 0, 2 );
+		echo "DEBUG: error status";
+	print_r ( $this -> check_status );
 		
 		// В зависимости от результатов проверки устанавливаем лайот и передаём в него ошибки/данные импорта
 		switch ( $this -> check_status ) {
@@ -141,8 +146,6 @@ class RabbitViewCheck extends JViewLegacy
 				$this -> setLayout ( "error" );
 				break;
 			case 1:
-				$this -> cellWarnings = $this -> cellErrors;
-				$this -> structuralWarnings = $structuralErrors;
 				$this -> setLayout ( "warning" );
 				break;
 			case 0:
@@ -190,6 +193,5 @@ class RabbitViewCheck extends JViewLegacy
 		}
 	}
 
-	
 	
 }

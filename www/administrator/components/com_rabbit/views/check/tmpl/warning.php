@@ -19,72 +19,92 @@ defined('_JEXEC') or die('Restricted access');
             <div class="row-fluid">
                 <div class="span6">
 					
-					<?php
-					
-						echo "<h2>Syntax errors</h2>";
-						foreach ( $productList -> products (  ) as $product ) {
-							$le = $product -> errors (  );// array
-							if ( ! empty ( $le ) ) {
-								// create row error makeup
-							}
-							foreach ( $product -> properties (  ) as $property ) {
-								$se = $property -> errors (  );
-								if ( ! empty ( $se ) ) {
-									echo $se -> rowIndex (  ); // ...
-									// or $poduct -> rowIndex ... $property -> colIndex (  ) ... $se -> comment (  )
-									// create cell error makeup
-								}
-							}
-						}
-						// print row error makeup
-						// print cell error makeup
-						
-					
-						echo "<table>";
-						echo "<tr>";
-						echo "<th>#</th>";
-						foreach ( $headeList as $header ) {
-							echo "<th>$header</th>";
-						}
-						echo "</tr>";
-						foreach ( $productList -> products (  ) as $product ) {
-							
-							$class = "";
-							$tooltip = "";
-							$le = $product -> errors (  );
-							if ( ! empty ( $le ) ) {
-								$tooltip = "title='" . array_reduce ( $le, function ( $carry, $item ) { return $carry . "::" . $item -> comment (  ) }, "" ) . "'";
-								$class = "class='wrong-row'";
-							}
-							echo "<tr $tooltip $class >";
-							echo "<td>" . $product -> rowIndex (  ) . "</td>";
-							
-							foreach ( $product -> properties (  ) as $property ) {
-								
-								$class = "";
-								$tooltip = "";
-								$se = $property -> errors (  );
-								if ( ! empty ( $se ) ) {
-									$class = "class='wrong-cell'";
-									$tooltip = "title='" . $se -> comment (  ) . "'";
-								}
-								echo "<td $tooltip $class >" . $property -> value (  ) . "</td>";
-							}
-							
-							echo "</tr>"
-						}
-						echo "</table>";
-					?>
 					
                     <?php foreach ($this->form->getFieldset() as $field): ?>
                         <div class="control-group">
                             <div class="control-label"><?php echo "control-label"; ?></div>
                             <div class="controls"><?php echo "controls"; ?></div>
 							<p>Список ошибок</p>
-							<?php var_dump ($field); ?>
+							<?php //var_dump ($field); ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
+				<?php
+					// This template warning.php, so template warning_subtemplate.php can be load like
+					// $this -> loadTemplate ( 'subtemplate' );
+					// And echo may be needed
+					echo "<h2>Summary</h2>";
+					echo "<h3>Cell errors [row:column] - value - [ comment ]</h3>";
+					foreach ( $this -> cellErrors as & $error ) {
+						echo "[{$error -> row (  )}:{$error -> column (  )}] - {$error -> value (  )} - [ {$error -> comment (  )} ]";
+						echo "<br/>";
+					}
+					unset ( $error );
+					
+					
+					echo "<h3>Structural errors [rows] : value [ comment ]</h3>";
+					foreach ( $this -> structuralErrors as & $error ) {	//array
+						$indexes = $error -> rowIndexes (  );
+						if ( count ( $indexes ) == 1 ) {
+							$rows = $indexes [0];
+						} else {
+							$rows =	$error -> isRange (  ) ? implode ( ", ", $indexes ) : $indexes[0] . " - " . $indexes[count ( $indexes )];
+						}
+						echo "[$rows] : {$error -> value (  )} [ {$error -> comment (  )} ]";
+						echo "<br/>";
+					}
+					unset ( $error );
+					
+					echo "<h2>Full product table</h2>";
+					echo "<table class='full-product-list' border='1'><tr>";
+					foreach ( $this -> csv -> headers (  ) as $header ) {
+						echo "<th>$header</th>";
+					}
+					echo "</tr>";
+					
+					foreach ( $this -> csv -> data (  ) as $i => $row ) {
+						
+						$sErrors = array_filter (
+							$this -> structuralErrors,
+							function ( $elem ) use ( & $i ) {
+								return in_array ( $i, $elem -> rowIndexes (  ) );
+							}
+						);	//array
+						
+						if ( ! empty ( $sErrors ) ) {
+							$tooltip = array_reduce (
+								$sErrors,
+								function ( $carry, $item ) { return $carry . "::" . $item -> comment (  ); },
+								count ( $sErrors )
+							);
+							echo "<tr class='wrong-row' title='$tooltip'>";
+						} else {
+							echo "<tr>";
+						}
+						
+						foreach ( $row as $j => $cell ) {
+							
+							$cError = array_filter (
+								$this -> cellErrors,
+								function ( $elem ) use ( $i, $j ) {
+									return $elem -> row (  ) == $i && $elem -> column (  ) == $j;
+								}
+							);
+							
+							$cellContent = mb_strlen ( $cell ) < 128 ? $cell : mb_substr ( $cell, 0, 128, "UTF-8" );
+							$cError = array_reduce ( $cError, function ( $carry, $item ) { return $item; } );
+							if ( ! empty ( $cError ) ) {
+								$tooltip = $cError -> comment (  );
+								echo "<td class='wrong-cell' title='$tooltip'>$cellContent</td>";
+							} else {
+								echo "<td>$cellContent</td>";
+							}
+						}
+						
+						echo "</tr>";
+					}
+					echo "</table>";
+					?>
             </div>
         </fieldset>
     </div>

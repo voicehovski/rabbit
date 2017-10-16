@@ -22,6 +22,10 @@ class csvHelper {
 */
 class Csv {
 
+	public static $CSV_DELIMITER = ';';
+	public static $CSV_ENCLOSURE = '';
+	public static $CSV_ESCAPE = '\\';
+
 	var $status;
 	
 	protected $headers_row_index = -1;
@@ -33,7 +37,11 @@ class Csv {
 	
 	protected $config;
 	
-	public function __construct ( $csv_data, $config ) {
+	public function __construct (
+		$csv_data,
+		//$config = array ( 'delim' => self::$CSV_DELIMITER, 'encl' => self::$CSV_ENCLOSURE, 'esc' => self::$CSV_ESCAPE )
+		$config = array ( 'delim' => ';', 'encl' => '', 'esc' => '' )
+	) {
 	
 		$status = 0;
 		
@@ -94,20 +102,44 @@ class Csv {
 	* Для создания ассоциативного массива на основе csv-строки передаём её в createAssoc
 	
 	@PROBLEMS:
-	* 
+	* Функции проверки ошибок и парсинга артикула прилеплены здесь, что называется, "не пришей к пизде рукав". Можно сделать их статическими или вообще, выделить отдельный класс
 */
 class CsvMetadata {
 
+	public static function createProductMetadata ( $headers ) {
+		
+		$PRODUCT_CSV_META_TEMPLATE = array (
+			'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2 ),
+			'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2 ),
+			'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2 ),
+			'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.+$", 'error_status' => 1 ),
+			'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2 ),
+			'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1 ),
+			'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1 )
+		);
+		
+		return new CsvMetadata ( $PRODUCT_CSV_META_TEMPLATE, $headers );
+	}
+	
+	public static function createUserMetadata (  ) {}
+	
+	public static function createOrdersMetadata (  ) {}
+	
 	protected $metadata;
+	
+	protected $getPVP;
 
-	public function __construct ( $metadata_template, $headers ) {
-		echo "DEBUG: " . implode ( "; ", $headers ) . "<br/>";
-		print_r ($headers);
+/*
+	@TODO:
+	* Нужно более надежное сравнение чем просто strcasecmp. Например посредством mb_strtolower
+	* Ошибку лучше выбрасывать в виде исключения и обрабатывать выше
+*/
+	public function __construct ( $metadata_template, $headers, $getPVP ) {
+
 		for ( $i = 0; $i < count ( $headers ); $i++ ) {
 			//Используем здесь ссылку чтобы можно было изменять элементы массива
 			foreach ( $metadata_template as &$h ) {
 				//! strcasecmp хуёво сравнивает мультибайтные строки без учета регистра, а именно - не сравнивает
-				echo "DEBUG: {$headers[$i]} == $h[name] <br/>";
 				if ( strcasecmp ( $headers [$i], $h ['name'] ) == 0 ) {
 					if ( $h ['index'] != -1 ) {
 						//! Ошибка. Такой заголовок уже зарегистрирован. Надо что-то делать
@@ -120,6 +152,21 @@ class CsvMetadata {
 		}
 		//! Проверить, все ли заголовки есть, нет ли лишних
 		$this -> metadata = $metadata_template;
+		
+		if ( is_callable ( $getPVP ) ) {
+			$this -> getPVP = $getPVP;
+		} else {
+			$this -> getPVP = function ( $property ) {
+			
+				$parts =  explode ( '/', $property );
+				
+				if ( count ( $parts ) != 3 ) {
+					throw new Exception ( 'Sku parsing error' );
+				}
+				
+				return array ( 'code' => $parts [0], 'size' => $parts [1], 'color' => $parts [2] );
+			};
+		}
 	}
 
 	public function errors (  ) {}	// Errors, occured while parsing headers
@@ -137,23 +184,33 @@ class CsvMetadata {
 	* Проверяет соответствие регулярному выражению
 	* Вносит найденные ошибки в список
 	
-	@RETURN: Список ошибок
+	@RETURN: Список ошибок или пустой массив. Выбрасывает исключение если не удалось установить кодировку
 	
 	@PROBLEMS:
-	* Как фиксировать ошибки типа: количество ячеек не соответствует количеству заголовков? В принципе можно здесь отмечать как лишние или отсутствующие
+	* Как фиксировать ошибки типа: количество ячеек не соответствует количеству заголовков? В принципе можно здесь отмечать как лишние или отсутствующие. Или лучше в вызывающем коде?
+	
+	@TODO:
+	* Вынести установку кодировки повыше
+	* Сделать обработку исключений. Тоже повыше
 	
 	@IDEAS:
-	* Добавить к результату комментарий ошибки?
+	* Добавить к результату описание ошибки
 */
 	public function checkCells ( $csv_row, $index ) {
 	
 		$errors = array ();
-	
+		
+		if ( ! mb_regex_encoding ( "UTF-8" ) ) {
+			
+			echo "Couldn`t set regex encoding at " . __FUNCTION__;
+			throw new Exception ( "Couldn`t set regex encoding" );
+		}
+		
 		foreach ( $this -> metadata as $header_key => $header_data ) {
-			if ( ! preg_match ( $header_data ['pattern'], $csv_row [$header_data ['index']], $matches ) ) {
+			if ( ! mb_ereg ( $header_data ['pattern'], $csv_row [$header_data ['index']], $matches ) ) {
 				
 				//Данные в ячейке не корректны. Записываем в ошибки
-				$errors [] = new CellCsvError ( $index, $header_data ['index'], $csv_row [$header_data ['index']], $header_data ['pattern'] );
+				$errors [] = new CellCsvError ( $index, $header_data ['index'], $csv_row [$header_data ['index']], $header_data ['pattern'], $header_data ['error_status'] );
 			}
 		}
 		
@@ -162,18 +219,20 @@ class CsvMetadata {
 
 /*		Проверяет логическую корректность данных дерева
 
-	@HOW_TO_USE: 
+	@HOW_TO_USE: передать объект типа ProductGroup
 	
 	@ACTIONS: 
-	* 
+	* группирует продукцию по коду продукта
+	* в каждой пдгруппе счиатет маркеры главного продукта
+	* записвывает ошибки маркеров
+	* группирует продукцию по артикулам
+	* считает где больше одного
+	* записывает ошибки дублирования артикулов
 	
-	@RETURN:
+	@RETURN: массив ошибок или пустой массив
 	
 	@PROBLEMS:
-	* 
-	
-	@QUESTIONS:
-	* Должен ли он что-то возвращать или все будет делаться внутре?
+	* слишком разноплановая. Можно разбить на две
 */		
 	public function checkStructural ( $productGroup ) {
 		
@@ -181,7 +240,7 @@ class CsvMetadata {
 		
 		$codeGroups = $productGroup -> groupBy ( 'code' );
 		foreach ( $codeGroups as $code => $group ) {
-			
+
 			$mainProducts = $group -> where (
 				function ( $p ) {
 					$m = $p -> get ( 'main' );
@@ -189,28 +248,29 @@ class CsvMetadata {
 				} 
 			);
 			
-			switch ( count ( $mainProducts ) ) {
+			switch ( $mainProducts -> size (  ) ) {
 				case 1:
 					// Clear
 					break;
 				case 0:
 					// Warning, no main product marker. Use anyone as the main
 					// @QUESTION: Правильно ли будет запихать идентификатор группы в саму группу? А номера строк?
-					$erors [] = new StructuralError ( $group -> rowIndexes (  ), $code, "Warning, no main product marker in product group: $code" );
+					$errors [] = new StructuralError ( $group -> rowIndexes (  ), $code, "Warning, no main product marker in product group: $code", 1 );
 					break;
 				default:
 					// Warning, more than one marker. Use last with marker as the main
-					$errors [] = new StructuralError ( $mainProducts -> rowIndexes (  ), $code, "Warning, more than one marker in product group: $code" );
+					$errors [] = new StructuralError ( $mainProducts -> rowIndexes (  ), $code, "Warning, more than one marker in product group: $code", 1 );
 				
 			}
 		}
+		
 		unset ( $codeGroups );
 		unset ( $group );
 		
 		$skuGroups = $productGroup -> groupBy ( 'sku' );
 		foreach ( $skuGroups as $sku => $group ) {
 			
-			if ( count ( $group -> getAll (  ) ) > 1 ) {
+			if ( $group -> size (  ) > 1 ) {
 				$errors [] = new StructuralError ( $group -> rowIndexes (  ), $sku, "Warning, same sku: $sku" );
 			}
 		}
@@ -231,19 +291,37 @@ class CsvMetadata {
 	
 	@PROBLEMS:
 	* Работает только на основе артикула
+	* Захардкоженные имена колонок
+	* По-моему она не на своём месте
+	
+	@TODO:
+	* Учесть разные форматы артикулов. Какг это распределить по таблицам?
+	
+	@IDEAS:
+	* Может лучше передавать не свойство, а весь продукт?
 */			
 	public function getProductVariantProperties ( $property ) {
-		return explode ( '/', $property );
+		$f = $this -> getPVP;
+		return $f( $property );
 	}
 	
 /*		Создаёт ассоциативный массив для доступа к данным csv по кодам
+
+	@ACTIONS:
+	* Перечень ключей создаётся по заголовкам
+	* Если в данных отсутствует индекс, соответствующий ключу, в АМ будет записана пустая строка
+	* Если в данных лишний индекс, он будет проигнорирован
+
+	@PROBLEMS:
+	* Что делать если соответствующего индекса нет? На данный момент по соответствующему ключу будет записана пустая строка
 */
 	public function createAssoc ( $csv_row ) {
 		
 		$assoc = array (  );
 		
 		foreach ( $this -> metadata as $header_key => $header_data ) {
-			$assoc [$header_key] = $csv_row [$header_data ['index']];
+			// Обращение по несуществующему индексу вернет null
+			$assoc [$header_key] = $csv_row [$header_data ['index']] === null ? "" : $csv_row [$header_data ['index']];
 		}
 		
 		return $assoc;
@@ -253,17 +331,34 @@ class CsvMetadata {
 
 class CellCsvError {
 	
-	public function __construct ( $row, $column, $value, $comment ) {
+	public static function worstErrorStatus ( $errors ) {
+		
+		if ( ! is_array ( $errors ) || empty ( $errors ) ) {
+			return 0;
+		}
+		
+		$worst = 0;
+		
+		foreach ( $errors as $e ) {
+			$worst = max ( $e -> status (  ), $worst );
+		}
+		
+		return $worst;
+	}
+	
+	public function __construct ( $row, $column, $value, $comment, $status ) {
 		$this -> row = $row;
 		$this -> column = $column;
 		$this -> value = $value;
 		$this -> comment = $comment;
+		$this -> status = $status;
 	}
 	
 	protected $row;
 	protected $column;
 	protected $value;
 	protected $comment;
+	protected $status;
 	
 	public function row (  ) {
 		return $this -> row;
@@ -277,19 +372,39 @@ class CellCsvError {
 	public function comment (  ) {
 		return $this -> comment;
 	}
+	public function status (  ) {
+		return $this -> status;
+	}
 }
 
 class StructuralError {
-	
-	public function __construct ( $rows, $value, $comment ) {
+
+	public static function worstErrorStatus ( $errors ) {
+		
+		if ( ! is_array ( $errors ) || empty ( $errors ) ) {
+			return null;
+		}
+		
+		$worst = 0;
+		
+		foreach ( $errors as $e ) {
+			$worst = max ( $e -> status (  ), $worst );
+		}
+		
+		return $worst;
+	}
+
+	public function __construct ( $rows, $value, $comment, $status ) {
 		$this -> rowIndexes = is_array ( $rows ) ? $rows : array ( $rows );
 		$this -> value = $value;
 		$this -> comment = $comment;
+		$this -> status = $status;
 	}
 	
 	protected $rowIndexes;
 	protected $value;
 	protected $comment;
+	protected $status;
 
 	public function rowIndexes (  ) {
 		return $this -> rowIndexes;
@@ -299,6 +414,9 @@ class StructuralError {
 	}
 	public function comment (  ) {
 		return $this -> comment;
+	}
+	public function status (  ) {
+		return $this -> status;
 	}
 	
 	public function isRange (  ) {
@@ -316,6 +434,17 @@ class StructuralError {
 }
 
 
+/*		Оболочка для строки данных csv
+
+	@ANNOTATION: Содержит строку csv в виде АМ с ключами в соответствии с CsvMetadata. Реализует методы доступа по ключу, проверки существования свойстава и получения индекса строки в исходной таблице
+	
+	@HOW_TO_USE:
+	* Служит основой ProductGroup
+	
+	@PROBLEMS:
+	* Доступ по волшебным кодам
+	* Метод get не отличает null-свойства от отсутствующих свойств. Нужно вызывать containsProperty
+*/
 class ProductData {
 	
 	protected $row;
@@ -329,14 +458,17 @@ class ProductData {
 
 /*		Возвращает свойство продукта
 
-	@HOW_TO_USE: Передавать в качестве аргумента коды в соответствии с csv-metadata, а также color и size
+	@HOW_TO_USE: Передавать в качестве аргумента коды в соответствии с csv-metadata, а также code, color и size
 
-	@RETURN: Возвращает свойство продукта или null если такого свойства нетъ
+	@RETURN: Возвращает свойство продукта или null если такого свойства нетъ. При вызове без параметров возвращает все свойства
 	
 	@IDEAS:
 	* Сделать проверку аргумента на допустимые коды колонок
 	* Сделать все свойства одним однородным массвом +
 	* Можно хранить данные в Group в одном двумерном массиве с числовыми индексами - тогда можно использовать функции массивов, например для извлечения столбца, а ProductData возвращать из группы чем-то вроде getProduct или where
+	
+	@PROBLEMS:
+	* Как различать отсутствие свойства и свойство с пустым значением - Можно проверять результат на null строго
 */			
 	public function get ( $name = null ) {
 
@@ -346,8 +478,8 @@ class ProductData {
 		return $this -> row;
 	}
 	
-	public function contains ( $propertyName ) {
-		return array_key_exists ( $propertyName, $row );
+	public function containsProperty ( $propertyName ) {
+		return array_key_exists ( $propertyName, $this -> row );
 	}
 	
 	public function getRowIndex (  ) {
@@ -356,9 +488,9 @@ class ProductData {
 	
 }
 
-/*		Структура для логической проверки данных о товарах и организации доступа к ним.
+/*		Структура для фильтрации, группировки и доступа к данным csv.
 
-	@ANNOTATION:  
+	@ANNOTATION: Основана на объектах ProductData. Фильтрующие методы возвращают ProductGroup
 	
 	@HOW_TO_USE:
 	* Создаётся путем последовательного вызова метода add с ассоциативным массивом данных (CsvMetadata -> createAssoc) или конструктором
@@ -366,6 +498,7 @@ class ProductData {
 	
 	@PROBLEMS:
 	* Нужна проверкаа корректности данных и кодов колонок
+	* При создании и добавлении данные никак не проверяются. То есть можно пихать туда объекты с разными свойствами
 
 	@IDEAS:
 	* Комплексная проверка вне или  разнообразные is- и has- методы здесь?
@@ -374,6 +507,38 @@ class ProductData {
 class ProductGroup {
 	
 	public function __construct ( $productDataArray = null ) {
+		
+		/* @TODO:
+			Если аргумент пустой, создаём пустое множество
+			if ( empty ( $productDataArray ) )
+				return;
+			
+			Если аргумент содержит хотябы один элемент, создаём на его основе список свойств и сохраняем данные
+			if ( is_array ( $productDataArray ) && is_set ( $productDataArray [0] ) )
+				$keys = $productDataArray [0];
+			
+			Если есть еще элементы, проверяем совпадение множеств свойств. Функция array_diff_key принимает несколько массивов и взвращает элементы первого, ключи которых отсутствуют в остальных.
+			for ( $i = 1; $i < count ( $productDataArray ); %i++ ) {
+				
+				$pData = $productDataArray [$i];
+				
+				// returns array like index => key, it is not what we need
+				$currentKeys = array_keys ( $pData );
+				
+				$diff = array_diff_key ( $keys, $pData );
+				if ( ! empty ( $diff ) ) {
+					...
+				}
+				$diff = array_diff_key ( $pData, $keys );
+				if ( ! empty ( $diff ) ) {
+					...
+				}	
+				// We can collect new keys if different keysets are allowed
+				$keys = array_merge ( $keys, $pData );
+			}
+			
+			$this -> keys = $keys;	//For chec in add method
+		*/
 		if ( isset ( $productDataArray ) ) {
 			$this -> products = is_array ( $productDataArray ) ? $productDataArray : array ( $productDataArray );
 		}
@@ -446,23 +611,30 @@ class ProductGroup {
 	@RETURN:
 	
 	@PROBLEMS:
+	* Проверяет наличие свойства только в первом элементе
 	* Как проверять? Есть ли хоть в одном элементе? Есть ли во всех? Тогда, наверно, лучше вести список свойств.
 	
-	@IDEAS:
-	*
+	@TODO:
+	* Изменить имя в соответствии с тем что будет делать фнукция
 */
 	public function contains ( $propertyName ) {
 		if ( ! isset ( $products [0] ) ) {
 			return false;
 		}
-		return $products [0] -> contains ( $propertyName );
+		return $products [0] -> containsProperty ( $propertyName );
 	}
 	
-/*
+/*		Возвращает гуппу продукции в соответствии с фильр-функцией или пустую группу
+
+	@QUESTIONS:
+	* Как лучше формировать пустую гурппу? Явно вызывать конструктор без параметров или просто передавать что на фильтровали и пустой массив сам сделает группу пустой?
 	
-		@IDEAS:
-		* return array_filter ( $this -> getAll (  ), $isRelevant ) 
-	*/
+	@PROBLEMS:
+	* Нужно внимательно следить чтобы в фильтрующей функции не происходило изменение аргумента, поскольку это ссылка, то есть может быть изменен базовый объект
+
+	@IDEAS:
+	* return array_filter ( $this -> getAll (  ), $isRelevant ) 
+*/
 	public function where ( $isRelevant/* = function ( $product ) { return true; }*/ ) {
 		
 		$relevantProducts = array (  );
@@ -473,9 +645,14 @@ class ProductGroup {
 			}
 		}
 		
-		return empty ( $relevantProducts ) ? null : new ProductGroup ( $relevantProducts );
+		//return empty ( $relevantProducts ) ? null : new ProductGroup ( $relevantProducts );
+		return empty ( $relevantProducts ) ? new ProductGroup (  ) : new ProductGroup ( $relevantProducts );
 	}
 	
+	
+/*		Возвращает продукцию в которой $pName = $pValue, упакованную в ProductGroup
+
+*/
 	public function getWhere ( $pName, $pValue ) {
 		
 		// @QUESTION: do we need property name check here?
@@ -488,17 +665,32 @@ class ProductGroup {
 		);
 	}
 	
+/*		Группирует продукцию по свойству. Если у продукта свойства нет, он не будет включен в результат
+
+	@HOW_TO_USE: Передать имя свойства в соответствии с метаданными csv
+	
+	@ACTIONS: 
+	* 
+	
+	@RETURN: АМ имя_свойства => соответствующая_группа_товаров или пустой массив (если такого свойства нет)
+	
+	@PROBLEMS:
+	* Проверяет наличие свойства на каждой итерации, что не есть эффективненько
+	* Если наборы свойств элементов группы различаются, то в результат может попасть только часть группы
+	
+	@IDEAS:
+	* Можно элементы без свойства выделить в null-группу
+*/
 	public function groupBy ( $propertyName ) {
 		
 		$groups = array (  );
 		
-		// @TODO: make a check
-		//if ( ! $p -> contains ( $propertyName ) ) {
-			
-		//	return $groups;
-		//}
-		
 		foreach ( $this -> getAll (  ) as $p ) {
+			
+			// @NOTE: Возможно лучше делать регистрировать свойства при добавлении продукции (отдельный случай - создание группы из группы - не нужно проверять) и как-то обозначать ситуацию разных наборов свойств. Тогда здесь можно проверять не для каждого товара, а только один раз.
+			if ( ! $p -> containsProperty ( $propertyName ) ) {
+				continue;
+			}
 			
 			if ( array_key_exists ( $p -> get ( $propertyName ), $groups ) ) {
 				
@@ -553,5 +745,16 @@ class ProductGroup {
 		
 		return $this -> products;
 	}
+
+	public function size (  ) {
+		
+		return count ( $this -> getAll (  ) );
+	}
+	
+	public function isEmpty (  ) {
+		
+		return $this -> size (  ) == 0;
+	}
+	
 }
 

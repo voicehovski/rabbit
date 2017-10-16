@@ -137,15 +137,16 @@ abstract class RabbitHelper extends JHelperContent {
 		По ключам мы сможем в валидаторе и далее по коду получать доступ к элементам строк csv посредством объектов CsvRow
 		Поле name должно соответствать заголовку таблицы импорта
 		Поле pattern - регулярное выражение для проверки данных
+		
 	*/
 	static $PRODUCT_CSV_META_TEMPLATE = array (
-		'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "#(\\d+)/(\\d+)/(\\d+)#", 'error_status' => 2 ),
-		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "/.*/", 'error_status' => 2 ),
-		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "/.*/", 'error_status' => 2 ),
-		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "/.+/", 'error_status' => 1 ),
-		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => "/.+/", 'error_status' => 2 ),
-		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "/.*/", 'error_status' => 1 ),
-		'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => "/.*/", 'error_status' => 1 )
+		'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2 ),
+		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2 ),
+		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2 ),
+		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.*$", 'error_status' => 1 ),
+		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2 ),
+		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1 ),
+		'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1 )
 	);
 	
 	static $USER_TABLE_VALIDATOR = array (
