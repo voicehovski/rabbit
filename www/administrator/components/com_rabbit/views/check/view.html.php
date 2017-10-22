@@ -58,18 +58,58 @@ class RabbitViewCheck extends JViewLegacy
 		// Получаем имена загруженных файлов
 		$table_filename = RabbitHelper::restore_variable ( 'uploaded_table' );
 		$images = RabbitHelper::restore_variable ( 'uploaded_images' );
+		$medi_images = RabbitHelper::restore_variable ( 'uploaded_medi' );
+		$mini_images = RabbitHelper::restore_variable ( 'uploaded_mini' );
 		
-		// Проверка отсутствия файлов происходит в контроллере, так что здесь хоть чтото должно быть
-		// @IDEA: Можно ничего не проверять и не передавать, а просто искать в каталоге загрузки новые файлы
-		// @TODO: Скопировать изображения в нужный каталог. При необходимости преобразовать
+		// Получаем остальные параметры импорта
+		$content_type = RabbitHelper::restore_variable ( 'content_type' );
+		$convert_images = RabbitHelper::restore_variable ( 'convert_images' );	//null or 1
+		$images_packed = RabbitHelper::restore_variable ( 'images_packed' );
+		$import_type = RabbitHelper::restore_variable ( 'import_type' );
 		
-		if ( $images && is_array ( $images ) && ! empty ( $images ) ) {
-			foreach ( $images as $image ) {
-				echo "DEBUG: $image <br/>";
+		// Через поле полноразмерных изображений загрузка обязательна. Множество изображений или архив
+		try {
+			if ( empty ( $images ) || ! is_array ( $images ) ) {
+				throw new Exception ( "Images are missing" );
 			}
-		} else {
-			echo "DEBUG: No images passed<br/>";
+			
+			// @TODO: Распаковка архива. Содержимое архива может не соответствовать, так что нужно проверять
+			if ( $images_packed ) {
+				// Распаковать во временный каталог. Структура каталогов внутри архива должна соответствовать full, medi, mini
+				// Если невозможно распаковать, выход
+				// Если в архиве не то, выход
+				throw new Exception ( "Archive error" );
+			}
+			
+			// @TODO: Конвертация изображений на сервере
+			if ( $convert_images ) {
+				// Создать стандарт и миниатюру для каждого изображения
+				// Если не получилось, выход
+				// Сохранить в соответствующие каталоги категорий
+				// Остальные загрузки игнорируем
+				throw new Exception ( "Convertation error" );
+			} else {
+				// Должны быть загружены все поля. Проверяем наличие и соответствие имен
+				$medi_diff = array (  );
+				if ( ! $this -> checkImages ( $images, $medi_images, $medi_diff ) ) {
+					throw new Exception ( "Medi images missmatch: " . implode ( ', ', $medi_diff ) );
+				}
+				
+				$mini_diff = array (  );
+				if ( ! $this -> checkImages ( $images, $mini_images, $mini_diff ) ) {
+					throw new Exception ( "Mini images missmatch: " . implode ( ', ', $mini_diff ) );
+				}
+				
+				
+				// @TODO: Копируем файлы в соответствующие каталоги категорий
+				// JFile::copy ( $src, $dest );
+				// @SEE: https://docs.joomla.org/How_to_use_the_filesystem_package, https://api.joomla.org/cms-3/classes/JFolder.html
+				
+			}
+		} catch ( Exception $e ) {
+			echo "TROUBLES WHILE IMAGE PROCESSING<br/>{$e -> getMessage (  )}<br/>";
 		}
+		
 		
 		if ( $table_filename ) {
 			// @NOTE: Функция file_get_contents читает файл в одну строку, file - в массив строк
@@ -80,14 +120,14 @@ class RabbitViewCheck extends JViewLegacy
 			// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
 			$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
 			
-			//$csvMeta = new CsvMetadata ( RabbitHelper::$PRODUCT_CSV_META_TEMPLATE, $csv -> headers (  ) );
 			// @TODO: Здесь нужно определить тип продукции (чекбокс или по заголовкам/категориям) и создать соответствующий объект. Пользователей и заказы, видимо лучше импортировать в другом виде
+			// Теперь можно создавать ассоциативные формы строк csv и обращаться к данным в них по заданным кодам, а не по исходным индексам
 			$csvMeta = CsvMetadata::createProductMetadata ( $csv -> headers (  ) );
 			
 			foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
 				
 				// Проверяем каждую ячейку регулярным выражением
-				// В строке может быть несколько ошибок, поэтому checkCells возвращает массив и сливаем его с существующим
+				// checkCells возвращает массив, поскольку в строке может быть несколько ошибок. Сливаем его с существующим
 				$errors = $csvMeta -> checkCells ( $row, $rowIndex );
 				if ( ! empty ( $errors ) ) {
 					$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
@@ -103,8 +143,7 @@ class RabbitViewCheck extends JViewLegacy
 				
 				
 				// @QUESTION: where should we catch errors like 'missing sku'? As critical error in cellErrors?
-				// @QUESTION: а как если по артикулу цвет и размер не определяются?
-				// Определяем по артикулу цвет и размер товара.
+				// Получаем свойства, определяющие разновидности одного товара . Функции получения этих свойств отличаются для разных категорий товаров. Соответствующие функции определены в статических фабричных методах CsvMetadata
 				$productVariantProperties = $csvMeta -> getProductVariantProperties ( $assocRow ['sku'] );//code=> color=> size=>
 				if ( ! $productVariantProperties ) {
 					$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku', 2 );
@@ -124,8 +163,6 @@ class RabbitViewCheck extends JViewLegacy
 			$this -> csv = $csv;
 			
 			$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
-			 
-			//++++++++++++++++++++++++++++++++++++++++
 			
 		} else {
 			echo "DEBUG: No table passed<br/>";
@@ -147,7 +184,7 @@ class RabbitViewCheck extends JViewLegacy
 				break;
 			case 1:
 				$this -> setLayout ( "warning" );
-				break;
+				//break;
 			case 0:
 				// @QUESTION: Нужно ли сохранять в сессию?
 				RabbitHelper::save_variable ( 'import_data', $this -> importData );
@@ -165,7 +202,7 @@ class RabbitViewCheck extends JViewLegacy
 		}
  
 		$this->addToolBar();
- 
+
 		parent::display($tpl);
 	}
 
@@ -193,5 +230,18 @@ class RabbitViewCheck extends JViewLegacy
 		}
 	}
 
+	protected function checkImages ( $base, $resized, & $diff ) {
+			
+			if ( empty ( $resized ) || ! is_array ( $resized ) ) {
+				return false;
+			}	
+			
+			$diff = array_diff ( $base, $resized );
+			if ( ! empty ( $diff ) ) {
+				return false;
+			}
+			
+			return true;
+		}
 	
 }

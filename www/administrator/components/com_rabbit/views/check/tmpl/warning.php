@@ -108,6 +108,10 @@ defined('_JEXEC') or die('Restricted access');
             </div>
         </fieldset>
     </div>
+	<?php
+		//echo "SESSION<br/>";
+		//print_r ( RabbitHelper::restore_variable ( 'import_data' ) );
+	?>
     <input type="hidden" name="task" value="" />
     <?php echo JHtml::_('form.token'); ?>
 </form>

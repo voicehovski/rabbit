@@ -17,15 +17,17 @@ class RabbitViewImport extends JViewLegacy
 
 	public function display($tpl = null)
 	{
+		
 		$this->form = $this->get('Form');
-		$this->import_report = $this->get('ImportReport');
 		
 		$app = JFactory::getApplication();
 		
-		$this -> import_struct = RabbitHelper::restore_variable ( 'import_struct' );
+		// @NOTE: Чтобы можно было передавать через сессию ОБЪЕКТЫ, в основном файле компонента перезапускаем сессию (см. также "Загрузка классов")
+		$this -> importData = RabbitHelper::restore_variable ( 'import_data' );
 		
 		$model = $this -> getModel ( 'import' );
-		$this -> import_status = $model -> import ( $this -> import_struct );
+		$this -> import_status = $model -> import ( $this -> importData );
+		$this -> import_report = $this->get('ImportReport');
 		
 		
 		switch ( $this -> import_status ) {

@@ -30,6 +30,24 @@
 					<option value="2">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_USERS</option>
 		</field>
 		<field
+				name="convert_images"
+				type="checkbox"
+				label="COM_RABBIT_RABBIT_CONVERT_IMAGES_LABEL"
+				description="COM_RABBIT_RABBIT_CONVERT_IMAGES_DESC"
+				value="1"
+				class="input-chbox"
+				default="0"
+				/>
+		<field
+				name="images_packed"
+				type="checkbox"
+				label="COM_RABBIT_RABBIT_IMAGES_PACKED_LABEL"
+				description="COM_RABBIT_RABBIT_IMAGES_PACKED_DESC"
+				value="1"
+				class="input-chbox"
+				default="0"
+				/>
+		<field
 				name="images"
 				type="file"
 				label="COM_RABBIT_RABBIT_IMAGES_LABEL"
@@ -40,13 +58,24 @@
 				multiple="1"
 				/>
 		<field
-				name="convert_images"
-				type="checkbox"
-				label="COM_RABBIT_RABBIT_CONVERT_IMAGES_LABEL"
-				description="COM_RABBIT_RABBIT_CONVERT_IMAGES_DESC"
-				value="1"
-				class="input-chbox"
-				default="0"
+				name="medi_images"
+				type="file"
+				label="COM_RABBIT_RABBIT_MEDIIMAGES_LABEL"
+				description="COM_RABBIT_RABBIT_MEDIIMAGES_DESC"
+				size="64"
+				class="inputbox"
+				default=""
+				multiple="1"
+				/>
+		<field
+				name="mini_images"
+				type="file"
+				label="COM_RABBIT_RABBIT_MINIIMAGES_LABEL"
+				description="COM_RABBIT_RABBIT_MINIIMAGES_DESC"
+				size="64"
+				class="inputbox"
+				default=""
+				multiple="1"
 				/>
 		<field
 				name="import_options"

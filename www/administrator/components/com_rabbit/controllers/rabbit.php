@@ -33,34 +33,66 @@ class RabbitControllerRabbit extends JControllerForm
 */	
 	public function check ( $cachable = false, $urlparams = false ) {
 		
-		$TMP = JPATH_SITE . '/tmp/';
+		$TMP = JPATH_SITE . DIRECTORY_SEPARATOR . 'tmp';
 		
 		$input = JFactory::getApplication (  ) -> input;
 		$uploaded_files = $input->files->get('jform', null, 'raw');
 		$hasFiles = false;
 		
+		// Если архив
+		
+		// Если конвертировать на сервере
+		$options = $input -> getArray ( array (
+				"jform" => array (
+					'content_type' => 'string',	//combo
+					'convert_images' => 'string',	//checkbox
+					'images_packed' => 'string',	//checkbox
+					'import_options' => 'string',
+					'param' => array (
+						'import_type' => 'string',	//radio
+						'userimport' => 'string'
+					)
+				)
+			) );
+		
+		RabbitHelper::save_variable ( 'content_type', $options ['jform'] ['content_type'] );
+		RabbitHelper::save_variable ( 'convert_images', $options ['jform'] ['convert_images'] );
+		RabbitHelper::save_variable ( 'images_packed', $options ['jform'] ['images_packed'] );
+		RabbitHelper::save_variable ( 'import_type', $options ['jform'] ['import_type'] );
+		
 		jimport('joomla.filesystem.file');
 		
 		// Загружаем файлы во временный каталог и сохраняем их имена в сессии
-		if ( $uploaded_files ['images'] ) {
-			$uploaded_images = array (  );
-			foreach ( $uploaded_files ['images'] as $image ) {
-				JFile::upload (
-					$image ['tmp_name'],
-					$TMP . $image [ 'name' ],
-					false, true
-				);
-				$uploaded_images [] = $image [ 'name' ];
-			}
-			
+		
+		$uploaded_images = RabbitHelper::upload_images ( $uploaded_files, 'images', $TMP . DIRECTORY_SEPARATOR . 'full' );
+
+		if ( $uploaded_images === null ) {
+			echo "Couldn`t load images<br/>";
+		} else {
 			RabbitHelper::save_variable ( 'uploaded_images', $uploaded_images );
+			$hasFiles = true;
+		}
+		
+		$uploaded_medi = RabbitHelper::upload_images ( $uploaded_files, 'medi_images', $TMP . DIRECTORY_SEPARATOR . 'medi' );
+		if ( $uploaded_medi === null ) {
+			echo "Couldn`t load medi_images<br/>";
+		} else {
+			RabbitHelper::save_variable ( 'uploaded_medi', $uploaded_medi );
+			$hasFiles = true;
+		}
+		
+		$uploaded_mini = RabbitHelper::upload_images ( $uploaded_files, 'mini_images', $TMP . DIRECTORY_SEPARATOR . 'mini' );
+		if ( $uploaded_mini === null ) {
+			echo "Couldn`t load mini_images<br/>";
+		} else {
+			RabbitHelper::save_variable ( 'uploaded_mini', $uploaded_mini );
 			$hasFiles = true;
 		}
 		
 		if ( $uploaded_files ['import_table'] ) {
 			JFile::upload (
 				$uploaded_files [ 'import_table' ] ['tmp_name'],
-				$TMP . $uploaded_files [ 'import_table' ] [ 'name' ],
+				$TMP . DIRECTORY_SEPARATOR . $uploaded_files [ 'import_table' ] [ 'name' ],
 				false, true
 			);
 			
@@ -120,4 +152,6 @@ class RabbitControllerRabbit extends JControllerForm
 	public function close ( $cachable = false, $urlparams = false ) {
 		$this->setRedirect(JRoute::_('index.php', false) );
 	}
+
+	
 }

@@ -11,6 +11,10 @@ defined('_JEXEC') or die('Restricted access');
  
 // Require helper file
 JLoader::register('RabbitHelper', JPATH_COMPONENT . '/helpers/rabbit.php');
+session_write_close (  );
+//JLoader::register('RabbitHelper', JPATH_COMPONENT . '/helpers/csvh.php');	не работает
+if ( ! class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
+session_start (  );
  
 $controller = JControllerLegacy::getInstance('Rabbit');
  

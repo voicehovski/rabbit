@@ -27,6 +27,33 @@ abstract class RabbitHelper extends JHelperContent {
 		//session_write_close (  );
 		return $data;
 	}
+
+	public static function upload_images ( $uploaded_files, $name, $tmp_path ) {
+		
+		if ( !$uploaded_files [$name] ) {
+			return null;
+		}
+		
+		jimport('joomla.filesystem.file');
+		jimport('joomla.filesystem.folder');
+		
+		$uploaded_images = array (  );
+		
+		if ( ! JFolder::exists ( $tmp_path ) && ! JFolder::create ( $tmp_path ) ) {
+			return null;
+		}
+		
+		foreach ( $uploaded_files [$name] as $image ) {
+			JFile::upload (
+				$image ['tmp_name'],
+				$tmp_path . DIRECTORY_SEPARATOR . $image [ 'name' ],
+				false, true
+			);
+			$uploaded_images [] = $image [ 'name' ];
+		}
+		
+		return $uploaded_images;
+	}
 	
 	public static function storeUploadedFiles (  ) {
 		//Средства жумлы для работы с полями формы
@@ -98,16 +125,19 @@ abstract class RabbitHelper extends JHelperContent {
 		
 		return $uploaded_files;
 		
-		//Другие способы работы с файлами
-		//echo JFile::copy($tmp_src, $tmp_dest);
-		//move_uploaded_file ($tmp_src, $tmp_dest);
+		/*		Различные способы работы с загруженными файлами
+		
+			echo JFile::copy($tmp_src, $tmp_dest);
+			move_uploaded_file ($tmp_src, $tmp_dest);
 
-		//???
-		// $package = JInstallerHelper::unpack($tmp_dest, true);
-		// return $package;
+			$package = JInstallerHelper::unpack($tmp_dest, true);
+			return $package;
+		*/
 		
 		/*
-			Эксперименты с загрузкой файлов. Файлы нужно обрабатывать в том же запросе, в котором они отправлены - после редиректа они будут удалены
+				Загрузка файлов
+				
+			Файлы нужно обрабатывать в том же запросе, в котором они отправлены - после редиректа они будут удалены
 		
 			$jinput = JFactory::getApplication()->input;
 			$upload_options = $jinput -> get ( 'options', 'option_1=122', 'STR' );
@@ -123,38 +153,8 @@ abstract class RabbitHelper extends JHelperContent {
 			echo 'error = ' . $upload_files [ 'import_table' ] [ 'error' ];
 			echo 'size = ' . $upload_files [ 'import_table' ] [ 'size' ];
 		*/
+		
 	}
 
-
-	public static $CSV_DELIMITER = ';';
-	public static $CSV_ENCLOSURE = '';
-	public static $CSV_ESCAPE = '\\';
-	
-	/*		Данные для валидатора csv
-		
-		Это шаблон который дозаполняется в валидаторе и служит для проверки корректности таблицы импорта и доступа к данным csv
-		
-		По ключам мы сможем в валидаторе и далее по коду получать доступ к элементам строк csv посредством объектов CsvRow
-		Поле name должно соответствать заголовку таблицы импорта
-		Поле pattern - регулярное выражение для проверки данных
-		
-	*/
-	static $PRODUCT_CSV_META_TEMPLATE = array (
-		'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2 ),
-		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2 ),
-		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2 ),
-		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.*$", 'error_status' => 1 ),
-		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2 ),
-		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1 ),
-		'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1 )
-	);
-	
-	static $USER_TABLE_VALIDATOR = array (
-	
-	);
-	
-	static $ORDER_TABLE_VALIDATOR = array (
-	
-	);
 	
 }

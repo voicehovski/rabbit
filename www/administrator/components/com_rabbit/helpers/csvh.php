@@ -108,6 +108,7 @@ class CsvMetadata {
 
 	public static function createProductMetadata ( $headers ) {
 		
+		// @NOTE: все конфигурационные данные можно вынести в отдельный файл, но использовать их не где и как попало, а в определенных местах типа такого. То есть использовать такие данные через строго определенный интерфейс
 		$PRODUCT_CSV_META_TEMPLATE = array (
 			'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2 ),
 			'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2 ),
@@ -134,7 +135,7 @@ class CsvMetadata {
 	* Нужно более надежное сравнение чем просто strcasecmp. Например посредством mb_strtolower
 	* Ошибку лучше выбрасывать в виде исключения и обрабатывать выше
 */
-	public function __construct ( $metadata_template, $headers, $getPVP ) {
+	public function __construct ( $metadata_template, $headers, $getPVP = null ) {
 
 		for ( $i = 0; $i < count ( $headers ); $i++ ) {
 			//Используем здесь ссылку чтобы можно было изменять элементы массива
@@ -329,6 +330,7 @@ class CsvMetadata {
 }
 
 
+
 class CellCsvError {
 	
 	public static function worstErrorStatus ( $errors ) {
@@ -486,6 +488,13 @@ class ProductData {
 		return $this -> index;
 	}
 	
+	public function __toString (  ) {
+		$strep = "{$this->index}: ";
+		foreach ( $this -> row as $key => $value ) {
+			$strep .= "$key = $value, ";
+		}
+		return $strep;
+	}
 }
 
 /*		Структура для фильтрации, группировки и доступа к данным csv.

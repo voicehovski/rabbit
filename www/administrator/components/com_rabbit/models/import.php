@@ -47,7 +47,10 @@ class RabbitModelImport extends JModelAdmin
 			
 			Возвращает статус выполнения
 	*/
-	public function import ( $import_struct ) {
+	public function import ( $importData ) {
+		
+		// @TODO: Здесь выполняем запись в базу данных. Устанавливаем статус результата. Записываем информацию в отчеты
+		
 		return 0;
 	}
 }

@@ -44,10 +44,10 @@ defined('_JEXEC') or die('Restricted access');
 		
         <fieldset>
 			<legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Исходный список'; ?></legend>
-			<?php if ( ! $this -> import_struct ) { ?>
+			<?php if ( ! $this -> importData ) { ?>
 				<div> Empty session </div>
 			<?php } else { ?>
-			<?php foreach ( $this -> import_struct as $is ) { ?>
+			<?php foreach ( $this -> importData -> getAll (  ) as $is ) { ?>
 				<div>
 					<?php echo $is; ?>
 				</div>
