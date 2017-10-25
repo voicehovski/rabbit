@@ -57,6 +57,7 @@ abstract class RabbitHelper extends JHelperContent {
 	
 	public static function storeUploadedFiles (  ) {
 		//Средства жумлы для работы с полями формы
+		// См. также https://docs.joomla.org/Retrieving_request_data_using_JInput
 		$input    = JFactory::getApplication()->input;
 		
 		/*		Отладка и тестирование ввода. Для отладки закомментировать редирект в контроллере !!!

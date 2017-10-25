@@ -8,7 +8,7 @@
 		<!--
 			enctype="multipart/form-data"
 			method="post"
-			See also https://docs.joomla.org/File_form_field_type
+			See also https://docs.joomla.org/File_form_field_type, https://docs.joomla.org/Radio_form_field_type
 		-->
 		<field
 				name="import_table"

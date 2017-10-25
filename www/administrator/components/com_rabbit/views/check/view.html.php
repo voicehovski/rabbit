@@ -22,32 +22,6 @@ class RabbitViewCheck extends JViewLegacy
 	public function display($tpl = null)
 	{
 		
-		/*
-			Добавляем метаданные
-		*/
-		$doc = &JFactory::getDocument();
-		/* Создает пустой метатег generator. Например, на тот случай, если вы хотите скрыть, что сайт сделан на Joomla. */
-		$doc->setGenerator ( 'MyNiceGenerator' ); 
-		/* Задает метатег description */
-		$doc->setDescription ( 'Custom desc' ); 
-		/* Задает тег title */
-		$doc->setTitle ( 'Custom title' ); 
-		/* Создает пользовательский метатег */
-		//http-equiv="content-type" content="text/html; charset=utf-8"
-		$name = "content-type";
-		$content = "text/html; charset=utf-8";
-		$doc->setMetaData($name,$content); 
-		/* привязывает файл таблицы стилей */
-		// $doc->addStyleSheet('/path/to/file') 
-		/* привязывает файл javascript или скрипта на каком-либо другом языке */
-		// $doc->addScript('/path/to/file') 
-		/* добавляет пользовательский тег. Можно использовать для вставки любого тега в секцию head. */
-		// $doc->addCustomTag(); 
-		/* Добавляет кусок кода javascript. Разместит код javascript и обрамит тегом <script>. Joomla размещает их после внедрения скриптов addScript(). */
-		// $doc->addScriptDeclaration() 
-		/* Добавляет кусок пользовательского стиля css. Внедряет css-стили и обрамляет их тегом <style>. Joomla разместит их после стилей addStyleSheet(). */
-		// $doc->addStyleDeclaration()
-		
 		$TMP = JPATH_SITE . '/tmp/';	// Путь загрузки файлов. Аналогичная переменная в контроллере
 		
 		$this->form = $this->get('Form');
@@ -68,6 +42,7 @@ class RabbitViewCheck extends JViewLegacy
 		$import_type = RabbitHelper::restore_variable ( 'import_type' );
 		
 		// Через поле полноразмерных изображений загрузка обязательна. Множество изображений или архив
+		// @TODO: Способы возврата ошибок и прерывания работы скрпта (как выход из функции). Например метка на скобки
 		try {
 			if ( empty ( $images ) || ! is_array ( $images ) ) {
 				throw new Exception ( "Images are missing" );

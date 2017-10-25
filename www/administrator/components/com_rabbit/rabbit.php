@@ -11,6 +11,7 @@ defined('_JEXEC') or die('Restricted access');
  
 // Require helper file
 JLoader::register('RabbitHelper', JPATH_COMPONENT . '/helpers/rabbit.php');
+// Перезапускаем сессию. Без этого не возможно передать через сессию переменные-объекты (группу продукции)
 session_write_close (  );
 //JLoader::register('RabbitHelper', JPATH_COMPONENT . '/helpers/csvh.php');	не работает
 if ( ! class_exists ( 'csvHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'csvh.php' );
