@@ -50,6 +50,7 @@ class RabbitModelImport extends JModelAdmin
 	public function import ( $importData ) {
 		
 		// @TODO: Здесь выполняем запись в базу данных. Устанавливаем статус результата. Записываем информацию в отчеты
+		DBHelper::import ( $importData );
 		
 		return 0;
 	}

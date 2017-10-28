@@ -18,6 +18,8 @@ class RabbitViewImport extends JViewLegacy
 	public function display($tpl = null)
 	{
 		
+		if ( ! class_exists ( 'DBHelper' ) ) require ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'dbh.php' );
+		
 		$this->form = $this->get('Form');
 		
 		$app = JFactory::getApplication();

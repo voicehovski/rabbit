@@ -92,3 +92,31 @@
 	// $doc->addStyleDeclaration()
 	
 	Как добавить мета вида <meta charset="utf-8"> ?
+	
+	
+		Поля таблиц joomla и virtuemart
+		
+	Основная таблица продукции #__virtuemart_products
+	product_in_stock	количество товара в наявности
+	product_ordered		забронировано/заказано
+	product_available_date	доступен с...
+	product_availability	доступность (3-5 дней, 7 дней...)
+	product_sales		?
+	
+	Языковые таблицы продукции вида #__virtuemart_products_uk_ua	
+	virtuemart_product_id	int(1)
+	product_s_desc	varchar(2000)
+	product_desc	varchar(18400)
+	product_name	varchar(180)
+	metadesc	varchar(400) Метаданные: desc, keywords и title. В админпанели расположены во вкладке "Описание". Метаданные из той же вкладки robot и author не локализуются и в базе расположены в таблице #__virtuemart_products
+	metakey	varchar(400)
+	customtitle	varchar(255)
+	slug	varchar(192)
+	
+	
+		Базы данных
+	inner join	- это склейка таблиц строго по условию a.id = b.id
+	outer joins - склейки по условию, но мягко, а именно:
+	left join - в результат попадут строки из a которым ничего не соответствует в b
+	right join - в результат попадут строки из b которым ничего не соответствует в a
+	full join - в результат попадут и те и другие
