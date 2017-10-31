@@ -10,6 +10,9 @@
 	@PROBLEMS:
 	* 
 
+	@FRATURES:
+	
+	@PURPOSE:
 	
 		Для класса
 	
@@ -120,3 +123,9 @@
 	left join - в результат попадут строки из a которым ничего не соответствует в b
 	right join - в результат попадут строки из b которым ничего не соответствует в a
 	full join - в результат попадут и те и другие
+	
+	
+		Дата и время
+	// There is $query -> currentTimestamp (  ) method, but it needs query object
+	// $date = new JDate(); $date = JDate::getInstance(); $date = JFactory::getDate();
+	// Функция php date ( 'Y-m-d H:i:s' ) формирует строку с датой и временем по шаблону, но, почемуто при попытке вставить такую строку в базу данных изменений не происходит, так что используем JFactory::getDate (  ) -> toSql (  )
