@@ -12,64 +12,137 @@ class DBHelper {
 	
 	public static function import ( $group ) {
 		
+		/*
 		$test_products = $group -> getAll (  );
+		try {
 		$test = self::localizeProduct ( 5, $test_products [4], self::$config ['default-locale'] );
 		var_dump ( $test );
 		echo ( "<br/>" );
 		$test = self::localizeProduct ( 5, $test_products [4], self::$config ['default-locale'] );
+		} catch ( RuntimeException $e ) {
+			echo "sql error: {$e -> getMessage (  )} <br/>";
+		} */
+
+		$db = JFactory::getDbo (  );
 		
-		return;
-		
-		foreach ( $group -> getAll (  ) as $p ) {
+		foreach ( $group -> getAll (  ) as $raw_product ) {
 			
-			$product = new Product ( $p );
+			$product = new Product ( $raw_product );
 			
 			//		==	Product import	==
-			$product_id = self::getProductId ( $p -> get ( 'sku' ) );
-			
+			$product_id = self::getProductId ( $raw_product -> get ( 'sku' ) );
+
 			if ( $product_id === null ) {
 				$product_id = self::createProduct ( $product );
-				// if ( $product_id === null ) ...
+				if ( $product_id === null ) {
+					throw new Exception ( 'Couldn`t create product. Sku: ' . $product -> getDebugInfo (  ) );
+				}
+				if ( ! createProductLocalization ( $product_id, $product, $config ['default-locale'] ) ) {
+					throw new Exception ( 'Couldn`t create product localization. Sku: ' . $product -> getDebugInfo (  ) );
+				}
 			} else {
-				self::updateProduct ( $product_id, $product );
+				if ( ! self::updateProduct ( $product_id, $product ) ){
+					throw new Exception ( 'Couldn`t update product. Sku: ' . $product -> getDebugInfo (  ) );
+				}
+				if ( ! updateProductLocalization ( $product_id, $product, $config ['default-locale'] ) ) {
+					throw new Exception ( 'Couldn`t update product localization. Sku: ' . $product -> getDebugInfo (  ) );
+				}
 			}
 			
 			
 			//		==	Category import	==
 			$current_category_id_list = self::getProductCategories ( $product_id );	//ids
+			$current_category_id_list = empty ( $current_category_id_list ) ? array (  ) : $current_category_id_list;
 			$categories = $product -> categories (  );	//objects
 			
-			foreach ( $categories as $c ) {
+			foreach ( $categories as $category ) {
 				
 				$parent_id = 0;
 				$category_id = 0;
 				
-				foreach ( $c -> path (  ) as $p ) {
-					$category_id = self::getCategoryId ( $parent_id, $p, self::$config ['default-locale'] );
+				try {
+					$db -> transactionStart (  );
 					
-					if ( $category_id === null ) {
-						// @TODO: Сделать обработку ошибок
-						$category_id = self::createCategory ( $parent_id ); //value/null
-						self::localizeCategory ( $category_id, $p, self::$config ['default-locale'] );	//true/false
+					foreach ( $category -> path (  ) as $path_item ) {
+						$category_id = self::getCategoryId ( $parent_id, $path_item, self::$config ['default-locale'] );
+						
+						if ( $category_id === null ) {
+							// @TODO: Сделать обработку ошибок
+							$category_id = self::createCategory ( $parent_id ); //value/null
+							if ( $category_id === null ) {
+								throw new Exception ( "Couldn`t create category. Category: $path_item of {$category -> getDebugInfo (  )}" );
+							}
+							if ( ! self::createCategoryLocalization ( $category_id, $path_item, self::$config ['default-locale'] ) ) {	//true/false
+								throw new Exception ( "Couldn`t create category localization. Category: $path_item of {$category -> getDebugInfo (  )}" );
+							}
+						}
+						
+						$parent_id = $category_id;
+					}
+					// @IDEA: $imported_category_id_list [] = $category_id;
+						
+					$k = array_search ( $category_id, $current_category_id_list );
+					if ( $k !== false ) {
+						unset ( $current_category_id_list [$k] );
+						continue;
 					}
 					
-					$parent_id = $category_id;
+					if ( self::bindCategory ( $product_id, $category_id ) === false ) {
+						throw new Exception ( "Couldn`t bind category. Category: {$category -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 					}
-				// @IDEA: $imported_category_id_list [] = $category_id;
-				
-				$k = array_search ( $category_id, $current_category_id_list );
-				if ( $k !== false ) {
-					unset ( $current_category_id_list [$k] );
-					continue;
+					
+					$db -> transactionCommit (  );
+				} catch ( Exception $e ) {
+					$db -> transactionRollback (  );
+					JErrorPage::render ( $e );	// @QUESTION: watafaka is? Does this break da penetration?
+					throw new Exception ( "Error while category processing. Category: $path_item of {$category -> getDebugInfo (  )}" );
 				}
-				
-				self::bindCategory ( $product_id, $category_id );
 			}
+			
 			foreach ( $current_category_id_list as $cid ) {
-				self::unbindCategory ( $product_id, $cid );
+				if ( self::unbindCategory ( $product_id, $cid ) === false ) {
+					throw new Exception ( "Couldn`t unbind category. Category: {$category -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+				}
 			}
 			// @IDEA: array_diff ( $current_category_id_list, $imported_category_id_list )	unbind
-			// @IDEA: array_diff ( $imported_category_id_list ,$current_category_id_list )	bind	
+			// @IDEA: array_diff ( $imported_category_id_list ,$current_category_id_list )	bind
+			
+			
+			//		==	Custom fields import	==
+			
+			foreach ( $product -> properties (  ) as $property ) {
+				
+				$property_id = self::getPropertyId ( $property -> identifier (  ) );	//custom_title, уникальность под вопросом
+				
+				// Проверяем, существет ли такое свойство в системе. При необходимости создаём
+				if ( $property_id === null ) {
+					$property_id = self::createProperty ( $property );
+					if ( $property_id === null ) {
+						throw new Exception ( "Couldn`t create property: {$property -> getDebugInfo (  )}" );
+					}
+				}
+				
+				// Получаем перечень значений свойства ИД => значение для текущего продукта
+				$current_property_value_list = self::getProductPropertyValues ( $product_id, $property_id );
+				foreach ( $property -> value (  ) as $value ) {
+					// @NOTE: Возвращает ключ первого найденного значения. Регистрозависима. Для поиска не скольких значений: array array_keys ( $array, $value ) Тоже регистрозависима
+					$k = array_search ( $value, $current_property_value_list );
+					if ( $k !== false ) {
+						unset ( $current_property_value_list [$k] );
+					} else {
+						if ( self::bindProductPropertyValue ( $product_id, $property_id, $value ) ) {
+							throw new Exception ( "Couldn`t bind property value: {$property -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+						}
+					}
+				}
+				
+				// Удаляем лишние значения из базы
+				foreach ( $current_property_value_list as $id => $value ) {
+					self::removeProductPropertyValue ( $id )
+				}
+			}
+			
+			//		==	Images import	==
 		}
 	}
 	
@@ -86,57 +159,61 @@ class DBHelper {
 	@IDEAS:
 	*
 */
-public static function getProductId ( $productSku ) {
-	$s = new stdClass (  );
-	$s -> column_name = 'virtuemart_product_id';
-	$s -> table_name = '#__virtuemart_products';
-	$s -> condition_column = 'product_sku';
+	public static function getProductId ( $productSku ) {
+		$s = new stdClass (  );
+		$s -> column_name = 'virtuemart_product_id';
+		$s -> table_name = '#__virtuemart_products';
+		$s -> condition_column = 'product_sku';
 
-	$results = self::get_id_ ( $productSku, $s );
-	
-	if ( $results ) {
-		if ( count ( $results > 1 ) ) {
-			throw Exception ( "Several products with sku $productSku" );
-		}
-		return $results [0];
-	} else {
-		return null;
-	}	
-}
+		$results = self::get_id_ ( $productSku, $s );
+		
+		if ( $results ) {
+			if ( count ( $results > 1 ) ) {
+				throw new Exception ( "Several products with sku $productSku" );
+			}
+			return $results [0];
+		} else {
+			return null;
+		}	
+	}
 
 /*		Создаёт новый продукт без локализации
 
+	@RETURN: new id or null
+
 	@TODO: Добавить остальные поля таблицы
 */
-public static function createProduct ( $product ) {
-	$columns = array ( 'product_sku', 'product_in_stock', 'published', 'created_on' ); 
-	$values = array ( $product -> identifier (  ), 1, 1, JFactory::getDate (  ) -> toSql (  ) );
+	public static function createProduct ( $product ) {
+		$columns = array ( 'product_sku', 'product_in_stock', 'published', 'created_on' ); 
+		$values = array ( $product -> identifier (  ), 1, 1, JFactory::getDate (  ) -> toSql (  ) );
 
-	return self::create_ ( $columns, $values, '#__virtuemart_products' );
-}
+		return self::create_ ( $columns, $values, '#__virtuemart_products' );
+	}
 
 /*		Обновляет данные продукта
 
+	@RETURN: ПРАВДУ если все хорошо
+
 	@TODO: Добавить локализацию
 */
-public static function updateProduct ( $id, $product ) {
+	public static function updateProduct ( $id, $product ) {
 
-	$object = new stdClass();
+		$object = new stdClass();
 
-	// Must be a valid primary key value.
-	$object -> virtuemart_product_id = $id;
-	$object -> modified_on = JFactory::getDate (  ) -> toSql (  );
-	if ( isset ( $product -> published ) ) {
-		if ( empty ( $product -> published ) ) {
-			$object -> published = 0;
-		} else {
-			$object -> published = 1;
+		// Must be a valid primary key value.
+		$object -> virtuemart_product_id = $id;
+		$object -> modified_on = JFactory::getDate (  ) -> toSql (  );
+		if ( isset ( $product -> published ) ) {
+			if ( empty ( $product -> published ) ) {
+				$object -> published = 0;
+			} else {
+				$object -> published = 1;
+			}
 		}
-	}
 
-	// Обновляемая таблица, данные и ключевое поле. Есть еще четвертый логический параметр говорящий как обновлять null-поля, но что это значит, пока не ясно - то ли обнулять то чего нет в данных, то ли не трогать то что и так null в базе
-	return JFactory::getDbo (  ) -> updateObject ( '#__virtuemart_products', $object, 'virtuemart_product_id' );
-}
+		// Обновляемая таблица, данные и ключевое поле. Есть еще четвертый логический параметр говорящий как обновлять null-поля, но что это значит, пока не ясно - то ли обнулять то чего нет в данных, то ли не трогать то что и так null в базе
+		return JFactory::getDbo (  ) -> updateObject ( '#__virtuemart_products', $object, 'virtuemart_product_id' );
+	}
 
 /*		Выполняет локализацию основных аттрибутов продукта (не пользовательских) на один язык
 
@@ -148,23 +225,29 @@ public static function updateProduct ( $id, $product ) {
 	
 	@PROBLEMS:
 	* не выполняет проверку существования локали
-	* слишком громоздко с проверкой существования
 	* Необходима обработка возврата нескольких ИД при проверке, что добавит громоздкости
 	
 	@FRATURES:
 	* 
 */
-	public static function localizeProduct ( $product_id, $product, $locale ) {
+	public static function createProductLocalization ( $product_id, $product, $locale ) {
+	
+		return JFactory::getDbo (  ) -> insertObject (
+			"#__virtuemart_products_$locale",
+			self::createProductLocalizationObject ( $product_id, $product )
+		);
+	}
+	
+	public static function updateProductLocalization ( $product_id, $product, $locale ) {
+	
+		return JFactory::getDbo (  ) -> updateObject (
+			"#__virtuemart_products_$locale",
+			self::createProductLocalizationObject ( $product_id, $product, 'virtuemart_product_id' )
+		);
+	}
 
-		$s = new stdClass (  );
-		$s -> column_name = 'virtuemart_product_id';
-		$s -> table_name = "#__virtuemart_products_$locale";
-		$s -> condition_column = 'virtuemart_product_id';
-
-		$results = self::get_id_ ( $product_id, $s );
+	public static function createProductLocalizationObject ( $product_id, $product ) {
 		
-		
-		$db = JFactory::getDbo (  );
 		$lcl = new stdClass (  );
 		
 		$lcl -> virtuemart_product_id = $product_id;
@@ -174,13 +257,18 @@ public static function updateProduct ( $id, $product ) {
 		// meta...	metadesc, metakey, customtitle
 		$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . $productId;
 		
-		if ( ! $results ) {
-			return $db -> insertObject ( "#__virtuemart_products_$locale", $lcl );
-		} else {
-			return $db -> updateObject ( "#__virtuemart_products_$locale", $lcl, 'virtuemart_product_id' );
-		}
+		return $lcl;
 	}
+	
+	public static function productLocalizationExists ( $product_id ) {
+		
+		$s = new stdClass (  );
+		$s -> column_name = 'virtuemart_product_id';
+		$s -> table_name = "#__virtuemart_products_$locale";
+		$s -> condition_column = 'virtuemart_product_id';
 
+		return self::get_id_ ( $product_id, $s );
+	}
 
 //====================	Categories	===========================
 
@@ -222,7 +310,7 @@ public static function updateProduct ( $id, $product ) {
 
 	@PURPOSE: Предназначена для автоматического создания категории по таблице продукции. Не устанавливает локализованные данные - только категорию и связь с родительской
 
-	@HOW_TO_USE: Вызвать функцию. Возвращенный идентификатор передать в localizeCategory
+	@HOW_TO_USE: Вызвать функцию. Возвращенный идентификатор передать в createCategoryLocalization
 	
 	@ARGS: идентификатор родительской категории
 
@@ -230,10 +318,10 @@ public static function updateProduct ( $id, $product ) {
 	
 	@PROBLEMS:
 	* при возниконвении ошибки могут остаться уже внесенные изменения. Транзакция?
-	* если после этой функции не вызвать localizeCategory, то будет создана безымянная категория
+	* если после этой функции не вызвать createCategoryLocalization, то будет создана безымянная категория
 	
 	@IDEAS:
-	* Можно включить сюда localizeCategory, и все обернуть в транзакцию или включить localizeCategory и это в отдельный методы
+	* Можно включить сюда createCategoryLocalization, и все обернуть в транзакцию или включить createCategoryLocalization и это в отдельный методы
 */
 	public static function createCategory ( $parent_id ) {
 		$db = JFactory::getDbo (  );
@@ -290,8 +378,7 @@ public static function updateProduct ( $id, $product ) {
 		$s -> table_name = '#__virtuemart_product_categories';
 		$s -> condition_column = 'virtuemart_product_id';
 
-		$results = self::get_id_ ( $productId, $s );
-		return $results ? $results : array (  );
+		return self::get_id_ ( $productId, $s );
 	}
 
 /*		Выполняет локализацию на один язык. Только основные данные
@@ -308,9 +395,8 @@ public static function updateProduct ( $id, $product ) {
 	@FRATURES:
 	* не выполняет проверку существования категории, соответствующей аргументам, поэтому такую проверку нужно выполнять в вызывающем коде
 */
-	public static function localizeCategory ( $category_id, $category_name, $locale ) {
-		$db = JFactory::getDbo (  );
-
+	public static function createCategoryLocalization ( $category_id, $category_name, $locale ) {
+		
 		$lcl = new stdClass (  );
 		
 		$lcl -> virtuemart_category_id = $category_id;
@@ -319,7 +405,30 @@ public static function updateProduct ( $id, $product ) {
 		// meta...	
 		$lcl -> slug = self::normalizeSlug ( $category_name, ! self::$config ['localized-slug'] );
 		
-		return $db -> insertObject ( "#__virtuemart_categories_$locale", $lcl );
+		return JFactory::getDbo (  ) -> insertObject ( "#__virtuemart_categories_$locale", $lcl );
+	}
+
+
+//====================	Properties	===========================
+
+	public static function getPropertyId ( $identifier ) {
+		return $id;
+	}
+
+	public static function createProperty ( $property ) {
+		return $id;
+	}
+
+	public static function getProductPropertyValues ( $product_id, $property_id ) {
+		return $assoc;
+	}
+
+	public static function bindProductPropertyValue ( $product_id, $property_id, $value? ) {
+		
+	}
+
+	public static function removeProductPropertyValue ( $value_id? ) {
+		
 	}
 
 
@@ -380,7 +489,8 @@ public static function updateProduct ( $id, $product ) {
 //=====================	Data bases	================================
 	
 /*		Получение связанных сущностей, например изображений продукта или сущности по идентификатору
-	
+
+	@RETURN: array of values or null. If entity selecting, more than one value in the array means error
 */
 	static function get_id_ ( $identifier, $s ) {
 		// Возвращает объект JDatabaseDriver
@@ -399,11 +509,14 @@ public static function updateProduct ( $id, $product ) {
 
 		$db -> setQuery ( $query );
 		// Возвращает массив значений. В случае неудачи возвращает null
-		// @QUESTION: В смысле ошибки или пустого результата?
-		$return =  $db -> loadColumn (  );
-		return $return;
+		// @QUESTION: В смысле ошибки или пустого результата? 
+		return $db -> loadColumn (  );
 	}
 
+/*		Создание сущности
+
+	@RETURN: new id or null
+*/
 	static function create_ ( $columns, $values, $table_name ) {
 		$db = JFactory::getDbo (  );
 		$query = $db -> getQuery ( true );
@@ -418,8 +531,7 @@ public static function updateProduct ( $id, $product ) {
 		$db -> setQuery ( $query );
 		// Возвращает КУРСОР и ЛОЖЪ в случае неудачи
 		// @QUESTION: что такое КУРСОРЪ? Отвътъ. Курсор - это объект типа mysqli_result, что-то вроде итератора по результатам запроса с допполями
-		$return = $db -> execute (  );
-		if ( ! $return ) {
+		if ( ! $db -> execute (  ) ) {
 			// Не получилось создать. Надо что-то делать
 			//$db -> getErrorNum (  );
 			//$db -> getErrorMessage (  );
@@ -430,10 +542,14 @@ public static function updateProduct ( $id, $product ) {
 		return $db -> insertid (  );
 	}
 
+/*		Создаёт связь сущностей, одна из которых, обычно - продукт
+	
+	@RETURN: Возвращает КУРСОР если все нормально, ПРАВДУ если такая привязка ужо была и ЛОЖЪ если что-то пошло не так
+*/
 	static function bind_ ( $productId, $_id, $s ) {
 		
 		if ( self::check_bind_ ( $productId, $_id, $s ) ) {
-			return;
+			return true;
 		}
 		
 		$db = JFactory::getDbo (  );
@@ -448,25 +564,31 @@ public static function updateProduct ( $id, $product ) {
 			-> values ( implode ( ',', $values ) );
 		
 		$db -> setQuery ( $query );
-		$return = $db -> execute (  );
-		return $return;
+		return $db -> execute (  );
 	}
-	
+
+/*		Проверяет связаны ли сущности, одна из которых, обычно - продукт
+
+	@RETURN: количество обнаруженных связей
+*/	
 	static function check_bind_ ( $productId, $_id, $s ) {
 		$db = JFactory::getDbo (  );
 		$query = $db -> getQuery ( true );
 		
 		$query
-			-> select ( '*' )
+			-> select ( 'COUNT(*)' )
 			-> from ( $db -> quoteName ( $s -> table_name ) )
 			-> where ( $db -> quoteName ( $s -> binder ) . ' = ' . $db -> quote ( $productId ) )
 			-> where ( $db -> quoteName ( $s -> bindee ) . ' = ' . $db -> quote ( $_id ) );
 			
 		$db -> setQuery ( $query );
-		$return = $db -> loadAssoc (  );
-		return $return;
+		return $db -> loadResult (  );
 	}
 
+/*
+
+	@RETURN: КУРСОР или ЛОЖЪ
+*/
 	static function unbind_ ( $productId, $_id, $s ) {
 		$db = JFactory::getDbo (  );
 		$query = $db -> getQuery ( true );
@@ -480,8 +602,7 @@ public static function updateProduct ( $id, $product ) {
 		$query -> where ( $conditions );
 		
 		$db -> setQuery ( $query );
-		$return = $db -> execute (  );
-		return $return;
+		return $db -> execute (  );
 	}
 
 	static function normalizeSlug ( $slug, $translit ) {
@@ -520,6 +641,14 @@ class Product {
 	
 	public function __construct ( $p ) {
 		$this -> data = $p;
+		
+		$this -> properties = array (
+			new Property ( 'theme' => $this -> data -> get ( 'theme' ) ),
+			new Property ( 'group' => $this -> data -> get ( 'group' ) ),
+			new Property ( 'main' => $this -> data -> get ( 'main' ) )
+		);
+		
+		//$properties ['color_list']
 	}
 	
 	protected $data;
@@ -554,6 +683,46 @@ class Product {
 		}
 		return $c_objects;
 	}
+
+	public function properties (  ) {
+		
+		return $this -> properties;
+	}
+	
+	public function getDebugInfo (  ) {
+		return $this -> identifier (  );
+	}
+}
+
+class Property {
+	
+	public function __construct ( $identifier, $value ) {
+		
+		$this -> identifier = $identifier;
+		
+		$this -> value = explode ( ',', $value );
+		array_walk (
+			$this -> value,
+			function ( & $v, $key ) {
+				$v = trim ( $v );
+			}
+		);
+	}
+	
+	protected $identifier;
+	protected $value;
+	
+	public function identifier (  ) {
+		return $this -> identifier;
+	}
+	
+	public function value (  ) {
+		return $this -> value;
+	}
+	
+	public function getDebugInfo (  ) {
+		return $this -> identifier (  );
+	}
 }
 
 class Category {
@@ -570,5 +739,9 @@ class Category {
 	
 	public function path (  ) {
 		return explode ( '/', $this -> data );
+	}
+	
+	public function getDebugInfo (  ) {
+		return $this -> identifier (  );
 	}
 }

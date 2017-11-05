@@ -117,7 +117,8 @@
 	slug	varchar(192)
 	
 	
-		Базы данных
+		Базы данных. Джоины
+		
 	inner join	- это склейка таблиц строго по условию a.id = b.id
 	outer joins - склейки по условию, но мягко, а именно:
 	left join - в результат попадут строки из a которым ничего не соответствует в b
@@ -126,6 +127,29 @@
 	
 	
 		Дата и время
+		
 	// There is $query -> currentTimestamp (  ) method, but it needs query object
 	// $date = new JDate(); $date = JDate::getInstance(); $date = JFactory::getDate();
 	// Функция php date ( 'Y-m-d H:i:s' ) формирует строку с датой и временем по шаблону, но, почемуто при попытке вставить такую строку в базу данных изменений не происходит, так что используем JFactory::getDate (  ) -> toSql (  )
+	
+	
+		Базы данных. Индексы
+		
+	http://tokarchuk.ru/2012/08/indexes-classification/ и ссылки в конце статьи
+	
+	
+		Функции работы с базами данных в жумле
+		
+	\libraries\joomla\database\driver.php
+	
+
+		Customs
+	
+	При попытке создать одноименное поле имя будет автоматически измененно, при чем, похоже, тупо жумлой - база данных не ведет контроля за уникальностью. Можно непосредственно в базе создать одноименное поле
+	В текстовые поля кастомов (как имена, так и значения) жумла пихает не строки, а идентификаторы языковых файлов. Это позволяет локализовать кастомы. Это же позволяет давать им одинаковые имена. Константы можно размещать в стандартном локализационном файле или в оверрайде
+	
+	
+		Virtuemart. Места
+	\administrator\components\com_virtuemart\helpers\vmtext.php
+	\components\com_virtuemart\sublayouts\customfield.php
+	\components\com_virtuemart\sublayouts
