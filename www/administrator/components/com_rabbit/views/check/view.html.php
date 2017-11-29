@@ -19,6 +19,26 @@ class RabbitViewCheck extends JViewLegacy
 	protected $importData = null;
 	protected $csv = null;
 
+	
+/*		Проверяет введенные данные и приводит их к форме пригодной для импорта
+
+	@ACTIONS: 
+	* Собирает параметры и данные, введенные на предыдущем шаге
+	* При необходимости обрабатывает/распаковывает загруженные изображения
+	* Проверяет корректность/комплектность изображений
+	* Нормализует данные csv-файла
+	* Проверяет их на ошибки ячеек (синтаксические)
+	* Определяет вариации товаров (раскладывает артикул)
+	* Создаёт структуру для импорта
+	* Проверяет ошибки структуры (логические)
+	* Определяет статус результата
+	* Если все нормально, сохраняет структуру импорта в сессии
+	
+	@TODO:
+	* Обработка изображений на сервере, распаковка архива
+	* Копирование изображений в соответствующий каталоги
+	* Разделение по типу импортируемой продукции (имя таблицы, поле, категория в табилце)
+*/
 	public function display($tpl = null)
 	{
 		
@@ -85,63 +105,67 @@ class RabbitViewCheck extends JViewLegacy
 			echo "TROUBLES WHILE IMAGE PROCESSING<br/>{$e -> getMessage (  )}<br/>";
 		}
 		
-		
-		if ( $table_filename ) {
-			// @NOTE: Функция file_get_contents читает файл в одну строку, file - в массив строк
-			//Читаем данные из таблицы импорта и выполняем проверку.
-			$rawCsv = file ( $TMP . $table_filename );
-			$products = new ProductGroup (  );
+		try {
+			if ( $table_filename ) {
+				// @NOTE: Функция file_get_contents читает файл в одну строку, file - в массив строк
+				//Читаем данные из таблицы импорта и выполняем проверку.
+				$rawCsv = file ( $TMP . $table_filename );
+				$products = new ProductGroup (  );
 
-			// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
-			$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
-			
-			// @TODO: Здесь нужно определить тип продукции (чекбокс или по заголовкам/категориям) и создать соответствующий объект. Пользователей и заказы, видимо лучше импортировать в другом виде
-			// Теперь можно создавать ассоциативные формы строк csv и обращаться к данным в них по заданным кодам, а не по исходным индексам
-			$csvMeta = CsvMetadata::createProductMetadata ( $csv -> headers (  ) );
-			
-			foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
+				// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
+				$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
 				
-				// Проверяем каждую ячейку регулярным выражением
-				// checkCells возвращает массив, поскольку в строке может быть несколько ошибок. Сливаем его с существующим
-				$errors = $csvMeta -> checkCells ( $row, $rowIndex );
-				if ( ! empty ( $errors ) ) {
-					$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
-					// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
-				}
+				// @TODO: Здесь нужно определить тип продукции (чекбокс или по заголовкам/категориям) и создать соответствующий объект. Пользователей и заказы, видимо лучше импортировать в другом виде
+				// Теперь можно создавать ассоциативные формы строк csv и обращаться к данным в них по заданным кодам, а не по исходным индексам
+				$csvMeta = CsvMetadata::createProductMetadata ( $csv -> headers (  ) );
+				
+				foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
+					
+					// Проверяем каждую ячейку регулярным выражением
+					// checkCells возвращает массив, поскольку в строке может быть несколько ошибок. Сливаем его с существующим
+					$errors = $csvMeta -> checkCells ( $row, $rowIndex );
+					if ( ! empty ( $errors ) ) {
+						$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
+						// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
+					}
 
-				// Формируем ассоциативный массив и фиксируем ошибку если не удалось
-				$assocRow = $csvMeta -> createAssoc ( $row );
-				if ( empty ( $assocRow ) ) {
-					$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv", 2 );
-					continue;
-				}
-				
-				
-				// @QUESTION: where should we catch errors like 'missing sku'? As critical error in cellErrors?
-				// Получаем свойства, определяющие разновидности одного товара . Функции получения этих свойств отличаются для разных категорий товаров. Соответствующие функции определены в статических фабричных методах CsvMetadata
-				$productVariantProperties = $csvMeta -> getProductVariantProperties ( $assocRow ['sku'] );//code=> color=> size=>
-				if ( ! $productVariantProperties ) {
-					$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku', 2 );
-					continue;
-				}
+					// Формируем ассоциативный массив и фиксируем ошибку если не удалось
+					$assocRow = $csvMeta -> createAssoc ( $row );
+					if ( empty ( $assocRow ) ) {
+						$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv", 2 );
+						continue;
+					}
+					
+					
+					// @QUESTION: where should we catch errors like 'missing sku'? As critical error in cellErrors?
+					// Получаем свойства, определяющие разновидности одного товара . Функции получения этих свойств отличаются для разных категорий товаров. Соответствующие функции определены в статических фабричных методах CsvMetadata
+					$productVariantProperties = $csvMeta -> getProductVariantProperties ( $assocRow ['sku'] );//code=> color=> size=>
+					if ( ! $productVariantProperties ) {
+						$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku', 2 );
+						continue;
+					}
 
-				// @QUESTION: Нужно ли сохранять ассоциативные массивы или они больше не понадобятся?
-				// Формируем структуру данных для дальнейшего импорта
-				$products -> add ( new ProductData ( $rowIndex, array_merge ( $productVariantProperties, $assocRow ) ) );
+					// @QUESTION: Нужно ли сохранять ассоциативные массивы или они больше не понадобятся?
+					// Формируем структуру данных для дальнейшего импорта
+					$products -> add ( new ProductData ( $rowIndex, array_merge ( $productVariantProperties, $assocRow ) ) );
+					
+				}
 				
+				// Струкрурные ошибки можно найти только в завершенном списке продукции
+				$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $products ) );
+				
+				$this -> importData = $products;
+				$this -> csv = $csv;
+				
+				$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
+				
+			} else {
+				echo "DEBUG: No table passed<br/>";
+				$this -> check_status = 3;
 			}
-			
-			// Струкрурные ошибки можно найти только в завершенном списке продукции
-			$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $products ) );
-			
-			$this -> importData = $products;
-			$this -> csv = $csv;
-			
-			$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
-			
-		} else {
-			echo "DEBUG: No table passed<br/>";
-			$this -> check_status = 3;
+		} catch (Exception $e) {
+			echo "{$e -> getMessage (  )} <br/>";
+			echo $e -> getTraceAsString (  );
 		}
 		
 		//$this -> check_status = rand ( 0, 2 );

@@ -116,6 +116,11 @@ class CsvMetadata {
 			'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.+$", 'error_status' => 1 ),
 			'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2 ),
 			'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1 ),
+			
+			'group' => array ( 'index' => -1, 'name' => "Группа", 'pattern' => "^.*$", 'error_status' => 1 ),
+			'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1 ),
+			'collection' => array ( 'index' => -1, 'name' => "Коллекция", 'pattern' => "^.*$", 'error_status' => 1 ),
+			
 			'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1 )
 		);
 		
@@ -162,7 +167,7 @@ class CsvMetadata {
 				$parts =  explode ( '/', $property );
 				
 				if ( count ( $parts ) != 3 ) {
-					throw new Exception ( 'Sku parsing error' );
+					throw new Exception ( 'Sku parsing error' . " [$property]" );
 				}
 				
 				return array ( 'code' => $parts [0], 'size' => $parts [1], 'color' => $parts [2] );

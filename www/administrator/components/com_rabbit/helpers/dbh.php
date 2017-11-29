@@ -12,16 +12,33 @@ class DBHelper {
 	
 	public static function import ( $group ) {
 		
-		/*
-		$test_products = $group -> getAll (  );
+		
+		$test_raw_product = $group -> getAll (  );
+		echo $test_raw_product [0] . "<br/>";
+		$test_product = new Product ( $test_raw_product [0] );
 		try {
-		$test = self::localizeProduct ( 5, $test_products [4], self::$config ['default-locale'] );
-		var_dump ( $test );
-		echo ( "<br/>" );
-		$test = self::localizeProduct ( 5, $test_products [4], self::$config ['default-locale'] );
-		} catch ( RuntimeException $e ) {
-			echo "sql error: {$e -> getMessage (  )} <br/>";
-		} */
+			//$test = self::localizeProduct ( 5, $test_raw_product [4], self::$config ['default-locale'] );
+			// var_dump ( $test );
+			// echo ( "<br/>" );
+			// $test = self::localizeProduct ( 5, $test_raw_product [4], self::$config ['default-locale'] );
+			
+			//echo $query -> dump (  ) . "<br/>";
+			
+			$test_prop_id = self::getPropertyId ( 'CF-5' );
+			echo "Property CF-5 id: " . $test_prop_id;
+			echo "<br/>";
+			print_r ( self::getProductPropertyValues ( 1, $test_prop_id ) );
+			echo "<br/>";
+			print_r ( $test_product -> properties (  ) );
+			echo "<br/>";
+			echo self::createProperty ( 'Колекція' );
+			
+		//} catch ( RuntimeException $ee ) {
+		//	echo "sql error: {$ee -> getMessage (  )} <br/>";
+		} catch ( Exception $e ) {
+			echo $e -> getTraceAsString (  );
+		}
+		return;
 
 		$db = JFactory::getDbo (  );
 		
@@ -100,7 +117,7 @@ class DBHelper {
 			}
 			
 			foreach ( $current_category_id_list as $cid ) {
-				if ( self::unbindCategory ( $product_id, $cid ) === false ) {
+				if ( ! self::unbindCategory ( $product_id, $cid ) === false ) {
 					throw new Exception ( "Couldn`t unbind category. Category: {$category -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 				}
 			}
@@ -109,14 +126,14 @@ class DBHelper {
 			
 			
 			//		==	Custom fields import	==
-			
+			/*
 			foreach ( $product -> properties (  ) as $property ) {
 				
 				$property_id = self::getPropertyId ( $property -> identifier (  ) );	//custom_title, уникальность под вопросом
 				
 				// Проверяем, существет ли такое свойство в системе. При необходимости создаём
 				if ( $property_id === null ) {
-					$property_id = self::createProperty ( $property );
+					$property_id = self::createProperty ( $property -> identifier (  ) );
 					if ( $property_id === null ) {
 						throw new Exception ( "Couldn`t create property: {$property -> getDebugInfo (  )}" );
 					}
@@ -125,12 +142,12 @@ class DBHelper {
 				// Получаем перечень значений свойства ИД => значение для текущего продукта
 				$current_property_value_list = self::getProductPropertyValues ( $product_id, $property_id );
 				foreach ( $property -> value (  ) as $value ) {
-					// @NOTE: Возвращает ключ первого найденного значения. Регистрозависима. Для поиска не скольких значений: array array_keys ( $array, $value ) Тоже регистрозависима
+					// @NOTE: Возвращает ключ первого найденного значения. Регистрозависима. Для поиска нескольких значений: array array_keys ( $array, $value ) Тоже регистрозависима
 					$k = array_search ( $value, $current_property_value_list );
 					if ( $k !== false ) {
 						unset ( $current_property_value_list [$k] );
 					} else {
-						if ( self::bindProductPropertyValue ( $product_id, $property_id, $value ) ) {
+						if ( ! self::bindProductPropertyValue ( $product_id, $property_id, $value ) ) {
 							throw new Exception ( "Couldn`t bind property value: {$property -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 						}
 					}
@@ -138,11 +155,40 @@ class DBHelper {
 				
 				// Удаляем лишние значения из базы
 				foreach ( $current_property_value_list as $id => $value ) {
-					self::removeProductPropertyValue ( $id )
+					self::removeProductPropertyValue ( $id );
 				}
 			}
+			*/
+			
 			
 			//		==	Images import	==
+			
+			$current_image_id_list = self::getProductImages ( $product_id );
+			
+			foreach ( $product -> images (  ) as $image ) {
+				
+				$image_id = self::getImageId ( $image -> identifier (  ) );	// В качестве идентификатора имя изображения. Правилно ли?
+				
+				if ( $image_id === null ) {
+					$image_id = self::createImage ( $image );
+					if ( $image_id === null ) {
+						throw new Exception ( "Couldn`t create image {$image -> getDebugInfo (  )}" );
+					}
+				}
+				
+				$k = array_search ( $image_id, $current_image_id_list );
+				if ( $k !== false ) {
+					unset ( $current_image_id_list [$k] );
+				} else {
+					if ( ! self::bindImage ( $product_id, $image_id ) ) {
+						throw new Exception ( "Couldn`t bind image: {$image -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+					}
+				}
+				
+				foreach ( $current_image_id_list as $id => $value ) {
+					self:unbindImage ( $product_id, $image_id );
+				}
+			}
 		}
 	}
 	
@@ -168,7 +214,7 @@ class DBHelper {
 		$results = self::get_id_ ( $productSku, $s );
 		
 		if ( $results ) {
-			if ( count ( $results > 1 ) ) {
+			if ( count ( $results ) > 1 ) {
 				throw new Exception ( "Several products with sku $productSku" );
 			}
 			return $results [0];
@@ -412,22 +458,63 @@ class DBHelper {
 //====================	Properties	===========================
 
 	public static function getPropertyId ( $identifier ) {
-		return $id;
+		// TODO: делаем запрос ИД таблицы virtuemart_customs по полю custom_title
+		$s = new stdClass (  );
+		$s -> column_name = 'virtuemart_custom_id';
+		$s -> table_name = '#__virtuemart_customs';
+		$s -> condition_column = 'custom_title';
+
+		$results = self::get_id_ ( $identifier, $s );
+		
+		if ( $results ) {
+			if ( count ( $results ) > 1 ) {
+				print_r ( $results );
+				throw new Exception ( "Several properties with title $identifier" );
+			}
+			return $results [0];
+		} else {
+			return null;
+		}
 	}
 
-	public static function createProperty ( $property ) {
-		return $id;
+	public static function createProperty ( $identifier ) {
+		$columns = array ( 'custom_title', 'show_title', 'field_type', 'published', 'created_on' ); 
+		$values = array ( $identifier, 0, 'S', 1, JFactory::getDate (  ) -> toSql (  ) );
+
+		return self::create_ ( $columns, $values, '#__virtuemart_customs' );
 	}
 
+	/*		Возвращает список значений свойства продукта
+	
+		@PROBLEMS:
+		* Пользовательские свойства и их значения хранятся в базе данных в виде идентификаторов языковых файлов, так что ни непосредственный поиск, ни создание/удаление по локализованному имени/значению невозможны
+	*/
 	public static function getProductPropertyValues ( $product_id, $property_id ) {
-		return $assoc;
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+
+		$query -> select ( $db -> quoteName ( 'virtuemart_customfield_id' ) );
+		$query -> select ( $db -> quoteName ( 'customfield_value' ) );
+		$query -> from ( $db -> quoteName ( '#__virtuemart_product_customfields' ) );
+		$query -> where ( $db -> quoteName ( 'virtuemart_product_id' ) . ' = ' . $product_id );
+		$query -> where ( $db -> quoteName ( 'virtuemart_custom_id' ) . ' = ' . $property_id );
+
+		$db -> setQuery ( $query );
+		
+		/*
+			Без аргумента вернет number => [virtuemart_customfield_id => id, customfield_value => value]
+			Хотелось бы чтобы с аргументом оно возвращало virtuemart_customfield_id => customfield_value
+			Но с аргументом оно возвращает virtuemart_customfield_id => [virtuemart_customfield_id => id, customfield_value => value]
+			При чем передавать нужно именно 'virtuemart_customfield_id', а не $db -> quoteName ('virtuemart_customfield_id')
+		*/
+		return $db -> loadAssocList ( 'virtuemart_customfield_id' );
 	}
 
-	public static function bindProductPropertyValue ( $product_id, $property_id, $value? ) {
+	public static function bindProductPropertyValue ( $product_id, $property_id, $value ) {
 		
 	}
 
-	public static function removeProductPropertyValue ( $value_id? ) {
+	public static function removeProductPropertyValue ( $value_id ) {
 		
 	}
 
@@ -443,7 +530,7 @@ class DBHelper {
 		$results = self::get_id_ ( $productId, $s );
 		
 		if ( $results ) {	//Что возвращает loadColumn в случае отсутствия результата?
-			if ( count ( $results > 1 ) ) {
+			if ( count ( $results ) > 1 ) {
 				//log warning	более одного изображения с таким именем в базе
 			}
 			return $results [0];
@@ -482,7 +569,8 @@ class DBHelper {
 		$s -> column_name = 'virtuemart_media_id';
 		$s -> table_name = '#__virtuemart_product_medias';
 		$s -> condition_column = 'virtuemart_product_id';
-		return self::get_id_ ( $productId, $s );
+		$result = self::get_id_ ( $productId, $s );
+		return $result == null ? array (  ) : $result;
 	}
 
 	
@@ -637,21 +725,35 @@ class DBHelper {
 	}
 }
 
+/*		Обертка для продукта
+
+	@PROBLEMS:
+	* В текущем виде создаёт пользовательские свойства, специфичные только для продукции категории "Одежда"
+	
+	@IDEAS:
+	* В зависимости от категории, создавать один из подклассов или ...
+	* ... передавать в конструктор сформированный вне список пользовательских свойств
+*/
 class Product {
 	
 	public function __construct ( $p ) {
 		$this -> data = $p;
 		
 		$this -> properties = array (
-			new Property ( 'theme' => $this -> data -> get ( 'theme' ) ),
-			new Property ( 'group' => $this -> data -> get ( 'group' ) ),
-			new Property ( 'main' => $this -> data -> get ( 'main' ) )
+			new Property ( 'theme', $this -> data -> get ( 'theme' ) ),
+			new Property ( 'group', $this -> data -> get ( 'group' ) ),
+			new Property ( 'main', $this -> data -> get ( 'main' ) )
 		);
 		
 		//$properties ['color_list']
+		
+		
+		$this -> images [] = ;
 	}
 	
 	protected $data;
+	protected $properties;
+	protected $images;
 	
 	public $published;
 	
@@ -689,6 +791,19 @@ class Product {
 		return $this -> properties;
 	}
 	
+	public function images (  ) {
+		$images =  explode ( ',', $this -> data -> get ( 'images' ) );
+		
+		if ( empty ( $images ) )
+			return array (  );
+		
+		$i_objects = array (  );
+		foreach ( $images as $i ) {
+			$i_objects [] = new Image ( trim ( $i ) );
+		}
+		return $i_objects;		
+	}
+	
 	public function getDebugInfo (  ) {
 		return $this -> identifier (  );
 	}
@@ -712,6 +827,8 @@ class Property {
 	protected $identifier;
 	protected $value;
 	
+	/*	В качестве идентификатора поля будем использовать внутренние имена, служащие также идентификаторами языковых файлов, при необходимости отображения. Преобразование имен столбцов таблицы в идентификаторы полей должен выполнять класс CsvMetadata. В базе данных идентификатору соответствует поле custom_title таблиыц virtuemart_customs, за уникальностью которого мы должны следить самостоятельно
+	*/
 	public function identifier (  ) {
 		return $this -> identifier;
 	}
@@ -739,6 +856,23 @@ class Category {
 	
 	public function path (  ) {
 		return explode ( '/', $this -> data );
+	}
+	
+	public function getDebugInfo (  ) {
+		return $this -> identifier (  );
+	}
+}
+
+class Image {
+	
+	public function __construct ( $p ) {
+		$this -> data = $p;
+	}
+	
+	protected $data;
+	
+	public function identifier (  ) {
+		return $this -> data;
 	}
 	
 	public function getDebugInfo (  ) {
