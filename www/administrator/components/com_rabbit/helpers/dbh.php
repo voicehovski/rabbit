@@ -7,15 +7,18 @@ class DBHelper {
 	
 	static $config = array (
 		'localized-slug' => true,
-		'default-locale' => 'uk_ua'
+		'default-locale' => 'uk_ua',
+		
+		'product-image-path' => 'images/virtuemart/product/'
 	);
 	
 	public static function import ( $group ) {
 		
-		
+		//		==	Test block	==
 		$test_raw_product = $group -> getAll (  );
 		echo $test_raw_product [0] . "<br/>";
 		$test_product = new Product ( $test_raw_product [0] );
+		$test_product_id = 1;
 		try {
 			//$test = self::localizeProduct ( 5, $test_raw_product [4], self::$config ['default-locale'] );
 			// var_dump ( $test );
@@ -24,21 +27,44 @@ class DBHelper {
 			
 			//echo $query -> dump (  ) . "<br/>";
 			
-			$test_prop_id = self::getPropertyId ( 'CF-5' );
-			echo "Property CF-5 id: " . $test_prop_id;
+			/*
+			echo "Existed Product images id<br/>";
+			print_r ( self::getProductImages ( $test_product_id ) );
 			echo "<br/>";
-			print_r ( self::getProductPropertyValues ( 1, $test_prop_id ) );
+			
+			echo "Imported Product images name<br/>";
+			print_r ( $test_product -> images (  ) );
 			echo "<br/>";
-			print_r ( $test_product -> properties (  ) );
-			echo "<br/>";
-			echo self::createProperty ( 'Колекція' );
+			
+			echo "Check Imported Product images existance<br/>";
+			foreach ( $test_product -> images (  ) as $test_image ) {
+				$test_image_id = self::getImageId ( self::$config ['product-image-path'] . $test_image -> identifier (  ) );
+				echo $test_image -> identifier (  ) . ": $test_image_id<br/>";
+				if ( ! $test_image_id ) {
+					$test_image_id = self::createImage ( $test_image -> identifier (  ), self::$config ['product-image-path'] . $test_image -> identifier (  ) );
+				}
+				
+				if ( ! self::bindImage ( $test_product_id, $test_image_id ) ) {
+					throw new Exception ( "Couldn`t bind image: {$test_image -> getDebugInfo (  )}. Product: {$test_product -> getDebugInfo (  )}" );
+				}
+			}
+				 */
+				 
+			/* if ( ! self::createProductLocalization ( $test_product_id, $test_product, self::$config ['default-locale'] ) ) {
+				throw new Exception ( 'Couldn`t create product localization. Sku: ' . $test_product -> getDebugInfo (  ) );
+			} */
+			/* if ( ! self::updateProductLocalization ( 122, $test_product, self::$config ['default-locale'] ) ) {
+					throw new Exception ( 'Couldn`t update product localization. Sku: ' . $test_product -> getDebugInfo (  ) );
+				} */
 			
 		//} catch ( RuntimeException $ee ) {
 		//	echo "sql error: {$ee -> getMessage (  )} <br/>";
 		} catch ( Exception $e ) {
+			echo $e -> getMessage (  ) . "<br/>";
 			echo $e -> getTraceAsString (  );
 		}
-		return;
+		// return;
+		//		==	End of test block	==
 
 		$db = JFactory::getDbo (  );
 		
@@ -54,15 +80,22 @@ class DBHelper {
 				if ( $product_id === null ) {
 					throw new Exception ( 'Couldn`t create product. Sku: ' . $product -> getDebugInfo (  ) );
 				}
-				if ( ! createProductLocalization ( $product_id, $product, $config ['default-locale'] ) ) {
+				if ( ! self::createProductLocalization ( $product_id, $product, self::$config ['default-locale'] ) ) {
 					throw new Exception ( 'Couldn`t create product localization. Sku: ' . $product -> getDebugInfo (  ) );
 				}
 			} else {
 				if ( ! self::updateProduct ( $product_id, $product ) ){
 					throw new Exception ( 'Couldn`t update product. Sku: ' . $product -> getDebugInfo (  ) );
 				}
-				if ( ! updateProductLocalization ( $product_id, $product, $config ['default-locale'] ) ) {
-					throw new Exception ( 'Couldn`t update product localization. Sku: ' . $product -> getDebugInfo (  ) );
+				if ( self::productLocalizationExists ( $product_id, self::$config ['default-locale'] ) ) {	
+					if ( ! self::updateProductLocalization ( $product_id, $product, self::$config ['default-locale'] ) ) {
+						throw new Exception ( 'Couldn`t update product localization. Sku: ' . $product -> getDebugInfo (  ) );
+					}
+				} else {
+					// @TODO: Warning, product without localization
+					if ( ! self::createProductLocalization ( $product_id, $product, self::$config ['default-locale'] ) ) {
+						throw new Exception ( 'Couldn`t create product localization for existing product. Sku: ' . $product -> getDebugInfo (  ) );
+					}
 				}
 			}
 			
@@ -167,10 +200,14 @@ class DBHelper {
 			
 			foreach ( $product -> images (  ) as $image ) {
 				
-				$image_id = self::getImageId ( $image -> identifier (  ) );	// В качестве идентификатора имя изображения. Правилно ли?
+				$image_id = self::getImageId ( self::$config ['product-image-path'] . $image -> identifier (  ) );	// В качестве идентификатора имя изображения. Правилно ли?
 				
 				if ( $image_id === null ) {
-					$image_id = self::createImage ( $image );
+					
+					// @TODO: Check image title
+					$image_title = $image -> identifier (  );
+					
+					$image_id = self::createImage ( $image_title, self::$config ['product-image-path'] . $image -> identifier (  ) );
 					if ( $image_id === null ) {
 						throw new Exception ( "Couldn`t create image {$image -> getDebugInfo (  )}" );
 					}
@@ -180,13 +217,16 @@ class DBHelper {
 				if ( $k !== false ) {
 					unset ( $current_image_id_list [$k] );
 				} else {
+					// @QUESTION: ordering?
 					if ( ! self::bindImage ( $product_id, $image_id ) ) {
 						throw new Exception ( "Couldn`t bind image: {$image -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 					}
 				}
 				
 				foreach ( $current_image_id_list as $id => $value ) {
-					self:unbindImage ( $product_id, $image_id );
+					if ( ! self::unbindImage ( $product_id, $image_id ) ) {
+						throw new Exception ( "Couldn`t bind image: {$image -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+					}
 				}
 			}
 		}
@@ -243,7 +283,7 @@ class DBHelper {
 	@TODO: Добавить локализацию
 */
 	public static function updateProduct ( $id, $product ) {
-
+		echo "DEBUG: updateProduct<br/>";
 		$object = new stdClass();
 
 		// Must be a valid primary key value.
@@ -274,10 +314,10 @@ class DBHelper {
 	* Необходима обработка возврата нескольких ИД при проверке, что добавит громоздкости
 	
 	@FRATURES:
-	* 
+	* Если запись с таким $product_id уже существует, функция вернет ЛОЖЪ, что позволяет контролировать контроль
 */
 	public static function createProductLocalization ( $product_id, $product, $locale ) {
-	
+		echo "DEBUG: createProductLocalization<br/>";
 		return JFactory::getDbo (  ) -> insertObject (
 			"#__virtuemart_products_$locale",
 			self::createProductLocalizationObject ( $product_id, $product )
@@ -285,28 +325,34 @@ class DBHelper {
 	}
 	
 	public static function updateProductLocalization ( $product_id, $product, $locale ) {
-	
-		return JFactory::getDbo (  ) -> updateObject (
+		echo "DEBUG: updateProductLocalization<br/>";
+		$localization_object = self::createProductLocalizationObject ( $product_id, $product );
+		//unset ( $localization_object -> slug );
+		$return = JFactory::getDbo (  ) -> updateObject (
 			"#__virtuemart_products_$locale",
-			self::createProductLocalizationObject ( $product_id, $product, 'virtuemart_product_id' )
+			$localization_object,
+			'virtuemart_product_id'
 		);
+		echo "DEBUG: updateObject returns $return<br/>";
+		return $return;
 	}
 
 	public static function createProductLocalizationObject ( $product_id, $product ) {
-		
+		echo "DEBUG: createProductLocalizationObject<br/>";
 		$lcl = new stdClass (  );
 		
 		$lcl -> virtuemart_product_id = $product_id;
 		//$lcl -> product_s_desc = 
-		$lcl -> product_desc = $product -> get ( 'desc' );
-		$lcl -> product_name = $product -> get ( 'name' );
+		$lcl -> product_desc = $product -> desc (  );
+		$lcl -> product_name = $product -> name (  );
 		// meta...	metadesc, metakey, customtitle
-		$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . $productId;
+		$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
+		//$lcl -> slug = self::normalizeSlug ( $product -> identifier (  ), ! self::$config ['localized-slug'] );
 		
 		return $lcl;
 	}
 	
-	public static function productLocalizationExists ( $product_id ) {
+	public static function productLocalizationExists ( $product_id, $locale ) {
 		
 		$s = new stdClass (  );
 		$s -> column_name = 'virtuemart_product_id';
@@ -521,13 +567,13 @@ class DBHelper {
 
 //====================	Images	===========================
 
-	public static function getImageId ( $image_url ) {
+	public static function getImageId ( $image_fileurl ) {
 		$s = new stdClass (  );
 		$s -> column_name = 'virtuemart_media_id';
 		$s -> table_name = '#__virtuemart_medias';
 		$s -> condition_column = 'file_url';
 
-		$results = self::get_id_ ( $productId, $s );
+		$results = self::get_id_ ( $image_fileurl, $s );
 		
 		if ( $results ) {	//Что возвращает loadColumn в случае отсутствия результата?
 			if ( count ( $results ) > 1 ) {
@@ -539,9 +585,11 @@ class DBHelper {
 		}
 	}
 
-	public static function createImage ( $image ) {
-		$columns = array ( 'file_url', 'file_url_thumb', 'file_is_product_image', 'created_on' ); 
-		$values = array ( $image -> url, $image -> url_thumb, 1, date ( 'd.m.Y. H-i-s' ) );
+	
+	
+	public static function createImage ( $image_title, $image_fileurl ) {
+		$columns = array ( 'file_title', 'file_mimetype', 'file_type', 'file_url', 'created_on' ); 
+		$values = array ( $image_title, 'image/jpeg', 'product', $image_fileurl, JFactory::getDate (  ) -> toSql (  ) );
 
 		return self::create_ ( $columns, $values, '#__virtuemart_medias' );
 	}
@@ -552,7 +600,7 @@ class DBHelper {
 		$s -> bindee = 'virtuemart_media_id';
 		$s -> table_name = '#__virtuemart_product_medias';
 		
-		self::bind_ ( $productId, $imageId, $s );	
+		return self::bind_ ( $productId, $imageId, $s );	
 	}
 
 	public static function unbindImage ( $productId, $imageId ) {
@@ -561,7 +609,7 @@ class DBHelper {
 		$s -> bindee = 'virtuemart_media_id';
 		$s -> table_name = '#__virtuemart_product_medias';
 		
-		self::unbind_ ( $productId, $imageId, $s );
+		return self::unbind_ ( $productId, $imageId, $s );
 	}
 
 	public static function getProductImages ( $productId ) {
@@ -668,7 +716,7 @@ class DBHelper {
 			-> from ( $db -> quoteName ( $s -> table_name ) )
 			-> where ( $db -> quoteName ( $s -> binder ) . ' = ' . $db -> quote ( $productId ) )
 			-> where ( $db -> quoteName ( $s -> bindee ) . ' = ' . $db -> quote ( $_id ) );
-			
+		
 		$db -> setQuery ( $query );
 		return $db -> loadResult (  );
 	}
@@ -695,12 +743,13 @@ class DBHelper {
 
 	static function normalizeSlug ( $slug, $translit ) {
 		$st = mb_ereg_replace ( '[\s/]', "_", $slug );
+		$st = mb_ereg_replace ( '\W', "", $st );
 		if ( ! $st ) {
 			return "";
 		}
 		
 		if ( ! $translit ) {
-			return $st;
+			return mb_strtolower ( $st );
 		}
 		
 		$replacement = array( 
@@ -721,7 +770,7 @@ class DBHelper {
 		foreach($replacement as $i=>$u) { 
 			$st = mb_eregi_replace($i,$u,$st); 
 		} 
-		return $st; 
+		return strtolower ( $st ); 
 	}
 }
 
@@ -748,7 +797,7 @@ class Product {
 		//$properties ['color_list']
 		
 		
-		$this -> images [] = ;
+		//$this -> images [] = ;
 	}
 	
 	protected $data;
@@ -759,6 +808,14 @@ class Product {
 	
 	public function identifier (  ) {
 		return $this -> data -> get ( 'sku' );
+	}
+
+	public function name (  ) {
+		return $this -> data -> get ( 'name' );
+	}
+	
+	public function desc (  ) {
+		return $this -> data -> get ( 'desc' );
 	}
 	
 	public function categories (  ) {
