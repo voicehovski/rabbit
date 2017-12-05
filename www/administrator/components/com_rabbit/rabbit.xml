@@ -8,7 +8,11 @@
 	<authorUrl>http://www.example.org</authorUrl>
 	<copyright>Copyright Info</copyright>
 	<license>License Info</license>
-	<version>0.0.1</version>
+	<!--
+		Версии должен соответствовать файл в директории sql\updates\mysql
+		Номер версии будет записан при обновлении в таблицу _shemas
+	-->
+	<version>0.0.3</version>
 	<description>Component for import and export</description>
  
 	<install>
@@ -45,6 +49,8 @@
 			<folder>views</folder>
 			
 			<folder>controllers</folder>
+			
+			<folder>helpers</folder>
 		</files>
 		
 		<languages folder="admin/language">
@@ -52,6 +58,8 @@
 			<language tag="ru-RU">ru-RU/ru-RU.com_rabbit.sys.ini</language>
 			<language tag="uk-UA">uk-UA/uk-UA.com_rabbit.ini</language>
 			<language tag="uk-UA">uk-UA/uk-UA.com_rabbit.sys.ini</language>
+			<language tag="uk-UA">en-GB/en-GB.com_rabbit.ini</language>
+			<language tag="en-GB">en-GB/en-GB.com_rabbit.sys.ini</language>
 		</languages>
 	</administration>
  

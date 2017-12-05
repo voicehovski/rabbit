@@ -47,7 +47,7 @@ defined('_JEXEC') or die('Restricted access');
 			<?php if ( ! $this -> importData ) { ?>
 				<div> Empty session </div>
 			<?php } else { ?>
-			<?php foreach ( $this -> importData -> getAll (  ) as $is ) { ?>
+			<?php foreach ( $this -> importData ['data'] -> getAll (  ) as $is ) { ?>
 				<div>
 					<?php echo $is; ?>
 				</div>

@@ -154,7 +154,8 @@ class RabbitViewCheck extends JViewLegacy
 				// Струкрурные ошибки можно найти только в завершенном списке продукции
 				$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $products ) );
 				
-				$this -> importData = $products;
+				$this -> importData ['data'] = $products;
+				$this -> importData ['meta'] = $csvMeta -> getMeta (  );
 				$this -> csv = $csv;
 				
 				$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );

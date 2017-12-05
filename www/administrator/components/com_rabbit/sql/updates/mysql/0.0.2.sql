@@ -30,20 +30,6 @@ INSERT INTO `#__rabbit_ccf` (`name`) VALUES
 ('TEST_CCF_2');
 	
 	
-DROP TABLE IF EXISTS `#__rabbit_ccf_titles`;	
-
-CREATE TABLE `#__rabbit_ccf_titles` (
-	`id`       INT(11)     NOT NULL AUTO_INCREMENT,
-	`ccf_id` INT(11),
-	`lang` CHAR(5),
-	`ccf_title` VARCHAR(256),
-	PRIMARY KEY (`id`)
-)
-	ENGINE =MyISAM
-	AUTO_INCREMENT =0
-	DEFAULT CHARSET =utf8;
-	
-	
 DROP TABLE IF EXISTS `#__rabbit_vmp_ccf`;	
 
 CREATE TABLE `#__rabbit_vmp_ccf` (

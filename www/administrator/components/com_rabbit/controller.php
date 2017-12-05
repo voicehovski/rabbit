@@ -9,7 +9,9 @@
  
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
- 
+
+
+// Version 0.0.3
 class RabbitController extends JControllerLegacy
 {
 	//protected $default_view = 'rabbit';

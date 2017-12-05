@@ -110,18 +110,18 @@ class CsvMetadata {
 		
 		// @NOTE: все конфигурационные данные можно вынести в отдельный файл, но использовать их не где и как попало, а в определенных местах типа такого. То есть использовать такие данные через строго определенный интерфейс
 		$PRODUCT_CSV_META_TEMPLATE = array (
-			'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2 ),
-			'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2 ),
-			'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2 ),
-			'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.+$", 'error_status' => 1 ),
-			'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2 ),
-			'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1 ),
+			'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2, 'type' => 0 ),
+			'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+			'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+			'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.+$", 'error_status' => 1, 'type' => 0 ),
+			'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2, 'type' => 0 ),
+			'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
 			
-			'group' => array ( 'index' => -1, 'name' => "Группа", 'pattern' => "^.*$", 'error_status' => 1 ),
-			'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1 ),
-			'collection' => array ( 'index' => -1, 'name' => "Коллекция", 'pattern' => "^.*$", 'error_status' => 1 ),
+			'group' => array ( 'index' => -1, 'name' => "Группа", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+			'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+			'collection' => array ( 'index' => -1, 'name' => "Колекція", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
 			
-			'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1 )
+			'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1, 'type' => 1 )
 		);
 		
 		return new CsvMetadata ( $PRODUCT_CSV_META_TEMPLATE, $headers );
@@ -176,7 +176,21 @@ class CsvMetadata {
 	}
 
 	public function errors (  ) {}	// Errors, occured while parsing headers
-	public function getMeta ( $propertyName ) {}	//Should return array or assoc of headers, indexes etc.
+	
+	// @IDEA: realize with khawai array functions
+	public function getMeta ( $propertyName = null ) {
+		
+		if ( ! $propertyName ) {
+			return $this -> metadata;
+		}
+		
+		$column = array (  );
+		foreach ( $this -> metadata as $k => $v ) {
+			$column [$k] = isset ( $v [ $propertyName ] ) ? $v [ $propertyName ] : null;
+		}
+		
+		return $column;
+	}
 	public function codes (  ) {} //Can be got by array_keys ( $metadata ); 
 	
 	
