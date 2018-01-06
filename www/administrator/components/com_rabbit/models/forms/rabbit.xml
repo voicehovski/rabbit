@@ -19,15 +19,34 @@
 				class="inputbox"
 				default=""
 				/>
+		<!-- Тип combo - это список, значениями которого являются строки - содержимое тегов option -->
 		<field
 				name="content_type"
-				type="combo"
-				label="COM_RABBIT_RABBIT_CONTENTTYPE_LABEL"
+				type="list"
+				label="COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_LABEL"
 				description="COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_DESC"
-				size="16"
 				>
-					<option value="1">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_PRODUCTS</option>
-					<option value="2">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_USERS</option>
+					<option value="1">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_AUTO</option>
+					<option value="2">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_CLOTHES</option>
+					<option value="3">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_FABRICS</option>
+					<option value="4">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_TEXTILE</option>
+					<option value="255">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_USERS</option>
+		</field>
+		<field
+				name="product_variant_def"
+				type="list"
+				label="COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_LABEL"
+				description="COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_DESC"
+				>
+					<option value="255">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_DEFAULT</option>
+					<option value="1">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_AUTO</option>
+					<option value="2">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_SKUPARSING_1</option>
+					<option value="3">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_SKUPARSING_2</option>
+					<option value="4">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_SKUPARSING_3</option>
+					<option value="11">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_SKULIST</option>
+					<option value="12">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_CATEGOEYLIST</option>
+					<option value="13">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_ANOTHERFIELDS</option>
+					<option value="14">COM_RABBIT_RABBIT_TABLE_PRODUCTVARIANTDEF_ADDITIONALFIELDS</option>
 		</field>
 		<field
 				name="convert_images"

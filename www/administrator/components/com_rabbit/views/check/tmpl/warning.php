@@ -15,7 +15,7 @@ defined('_JEXEC') or die('Restricted access');
     method="post" name="adminForm" id="adminForm">
     <div class="form-horizontal">
         <fieldset class="adminform">
-            <legend><?php echo JText::_('COM_RABBIT_CHECK_WARNING_DETAILS'); ?></legend>
+            <legend><?php echo JText::_('COM_RABBIT_CHECK_WARNING_HEADER'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
 					
@@ -24,25 +24,27 @@ defined('_JEXEC') or die('Restricted access');
                         <div class="control-group">
                             <div class="control-label"><?php echo "control-label"; ?></div>
                             <div class="controls"><?php echo "controls"; ?></div>
-							<p>Список ошибок</p>
-							<?php //var_dump ($field); ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
+				<div style="clear:both"></div>
 				<?php
 					// This template warning.php, so template warning_subtemplate.php can be load like
 					// $this -> loadTemplate ( 'subtemplate' );
 					// And echo may be needed
-					echo "<h2>Summary</h2>";
-					echo "<h3>Cell errors [row:column] - value - [ comment ]</h3>";
+					echo "<legend>" . JText::_('COM_RABBIT_CHECK_WARNING_CELL_ERROR_HEADER') . "</legend>";
+					echo "<div class='cell-errors'>";
 					foreach ( $this -> cellErrors as & $error ) {
-						echo "[{$error -> row (  )}:{$error -> column (  )}] - {$error -> value (  )} - [ {$error -> comment (  )} ]";
-						echo "<br/>";
+						echo "<p>";
+						echo "[ {$error -> row (  )} : {$error -> column (  )} ] - {$error -> value (  )} - [ {$error -> comment (  )} ]";
+						echo "</p>";
 					}
+					echo "</div>";
 					unset ( $error );
 					
 					
-					echo "<h3>Structural errors [rows] : value [ comment ]</h3>";
+					echo "<legend>" . JText::_('COM_RABBIT_CHECK_WARNING_STRUCTURAL_ERROR_HEADER') . "</legend>";
+					echo "<div class='structural-errors'>";
 					foreach ( $this -> structuralErrors as & $error ) {	//array
 						$indexes = $error -> rowIndexes (  );
 						if ( count ( $indexes ) == 1 ) {
@@ -50,12 +52,14 @@ defined('_JEXEC') or die('Restricted access');
 						} else {
 							$rows =	$error -> isRange (  ) ? implode ( ", ", $indexes ) : $indexes[0] . " - " . $indexes[count ( $indexes )];
 						}
+						echo "<p>";
 						echo "[$rows] : {$error -> value (  )} [ {$error -> comment (  )} ]";
-						echo "<br/>";
+						echo "</p>";
 					}
+					echo "</div>";
 					unset ( $error );
 					
-					echo "<h2>Full product table</h2>";
+					echo "<legend>" . JText::_('COM_RABBIT_CHECK_WARNING_WHOLE_DATA_HEADER') . "</legend>";
 					echo "<table class='full-product-list' border='1'><tr>";
 					foreach ( $this -> csv -> headers (  ) as $header ) {
 						echo "<th>$header</th>";

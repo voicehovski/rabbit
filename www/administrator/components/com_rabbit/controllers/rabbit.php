@@ -45,6 +45,7 @@ class RabbitControllerRabbit extends JControllerForm
 		$options = $input -> getArray ( array (
 				"jform" => array (
 					'content_type' => 'string',	//combo
+					'product_variant_def' => 'string',	//combo
 					'convert_images' => 'string',	//checkbox
 					'images_packed' => 'string',	//checkbox
 					'import_options' => 'string',
@@ -56,6 +57,7 @@ class RabbitControllerRabbit extends JControllerForm
 			) );
 		
 		RabbitHelper::save_variable ( 'content_type', $options ['jform'] ['content_type'] );
+		RabbitHelper::save_variable ( 'product_variant_def', $options ['jform'] ['product_variant_def'] );
 		RabbitHelper::save_variable ( 'convert_images', $options ['jform'] ['convert_images'] );
 		RabbitHelper::save_variable ( 'images_packed', $options ['jform'] ['images_packed'] );
 		RabbitHelper::save_variable ( 'import_type', $options ['jform'] ['import_type'] );

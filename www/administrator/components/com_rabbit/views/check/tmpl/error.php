@@ -31,31 +31,38 @@ JFactory::getDocument()->addStyleDeclaration(
     method="post" name="adminForm" id="adminForm">
     <div class="form-horizontal">
         <fieldset class="adminform">
-            <legend><?php echo JText::_('COM_RABBIT_CHECK_ERROR_DETAILS'); ?></legend>
+            <legend><?php echo JText::_('COM_RABBIT_CHECK_ERROR_HEADER'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
+					<?php foreach ($this->form->getFieldset() as $field): ?>
+                        <div class="control-group">
+                            <div class="control-label"><?php echo "control-label"; ?></div>
+                            <div class="controls"><?php echo "controls"; ?></div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
 				
 					<?php
 						if ( $this -> check_status > 2 ) {
-							
-							echo "Common data error";
-							return;
-						}
+							echo "<legend>" . JText::_('COM_RABBIT_CHECK_ERROR_COMMON_ERROR_HEADER') . "</legend>";
+						} else {
 					?>
 				
 					<?php
-					echo "<h2>Summary</h2>";
-					echo "<h3>Cell errors [row:column] - value - [ comment ]</h3>";
+					echo "<legend>" . JText::_('COM_RABBIT_CHECK_ERROR_CELL_ERROR_HEADER') . "</legend>";
 					// @IDEA: cellErrors can be a simple array, so that items method is exess. In this case method getByRCIndexes is redundant too
+					echo "<div class='cell-errors'>";
 					foreach ( $this -> cellErrors as & $error ) {
+						echo "<p>";
 						echo "[{$error -> row (  )}:{$error -> column (  )}] - {$error -> value (  )} - [ {$error -> comment (  )} ]";
-						echo "<br/>";
+						echo "</p>";
 					}
+					echo "</div>";
 					unset ( $error );
 					
 					
-					echo "<h3>Structural errors [rows] : value [ comment ]</h3>";
+					echo "<legend>" . JText::_('COM_RABBIT_CHECK_ERROR_STRUCTURAL_ERROR_HEADER') . "</legend>";
+					echo "<div class='structural-errors'>";
 					foreach ( $this -> structuralErrors as & $error ) {	//array
 						$indexes = $error -> rowIndexes (  );	//should always return array of whole wrong indexes
 						if ( count ( $indexes ) == 1 ) {
@@ -64,12 +71,14 @@ JFactory::getDocument()->addStyleDeclaration(
 							$rows =	$error -> isRange (  ) ? implode ( ", ", $indexes ) : $indexes[0] . " - " . $indexes[count ( $indexes )];
 						}
 						//value (  ) can contain sku, product code, or product code with color or something else, but has to contain something
+						echo "<p>";
 						echo "[$rows] : {$error -> value (  )} [ {$error -> comment (  )} ]";
-						echo "<br/>";
+						echo "</p>";
 					}
+					echo "</div>";
 					unset ( $error );
 					
-					echo "<h2>Full product table</h2>";
+					echo "<legend>" . JText::_('COM_RABBIT_CHECK_ERROR_WHOLE_DATA_HEADER') . "</legend>";
 					echo "<table class='full-product-list' border='1'><tr>";
 					foreach ( $this -> csv -> headers (  ) as $header ) {
 						echo "<th>$header</th>";
@@ -125,7 +134,7 @@ JFactory::getDocument()->addStyleDeclaration(
 					}
 					echo "</table>";
 					?>
-				
+				<?php } ?>
             </div>
         </fieldset>
     </div>

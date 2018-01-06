@@ -18,7 +18,7 @@ defined('_JEXEC') or die('Restricted access');
             <legend><?php echo JText::_('COM_RABBIT_IMPORT_ERROR_DETAILS'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
-					<p>Список ошибок</p>
+					<p>Список ошибок, на!</p>
                 </div>
             </div>
         </fieldset>

@@ -15,7 +15,7 @@ defined('_JEXEC') or die('Restricted access');
     method="post" name="adminForm" id="adminForm">
     <div class="form-horizontal">
         <fieldset class="adminform">
-            <legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS'); ?></legend>
+            <legend><?php echo JText::_('COM_RABBIT_CHECK_HEADER'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
                     <?php foreach ($this->form->getFieldset() as $field): ?>
@@ -31,18 +31,15 @@ defined('_JEXEC') or die('Restricted access');
 		
 		<?php if ( $this -> csv ) { ?>
         <fieldset>
-			<h2><legend><?php echo JText::_('COM_RABBIT_CHECK_DETAILS') . ': Список изменений, которые будут внесены'; ?></legend></h2>
-			
+			<!-- legend><?php // echo JText::_('COM_RABBIT_CHECK_DEFAULT_CHANGE_LIST_HEADER'); ?></legend -->
+			<!--
+				@IDEA:
+				Информации об отличиях нового контента от существующего на данном этапе нет
+				При необходимости можно реализовать посредством сохранения предыдущего объекта group, но мы теряем изменения, внесенные вручную
+				Альтернатива - делать полноценное сравнение с текущими ТБД, но поцедура проверки значений в ТБД получится отделенной от записи или прийдется выполнять одно и то же два раза
+			-->
 			<?php
-				/*
-					Здесь выводим только изменения которые будут внесены
-					В сводном виде
-					Полная таблица изменений
-				*/
-			?>
-			
-			<?php
-				echo "<h2>Full product table</h2>";
+				echo "<legend>" . JText::_('COM_RABBIT_CHECK_DEFAULT_WHOLE_DATA_HEADER') . "</legend>";
 				echo "<table class='full-product-list' border='1'><tr>";
 				foreach ( $this -> csv -> headers (  ) as $header ) {
 					echo "<th>$header</th>";

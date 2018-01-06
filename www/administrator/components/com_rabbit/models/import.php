@@ -13,9 +13,17 @@ defined('_JEXEC') or die('Restricted access');
 
 class RabbitModelImport extends JModelAdmin
 {
+	
+	protected $import_report = array (  );
+	
 	public function getImportReport ( $param = array() )
 	{
-		return array ( "Import report 1", "Import report 2" );
+		
+		$this -> import_report ['modified'] = array ( "modified-1", "modified-2", "modified-3" );
+		$this -> import_report ['added'] = array ( "added-1", "added-2", "added-3", "added-4" );
+		$this -> import_report ['deleted'] = array ( "deleted-1" );
+		
+		return $this -> import_report;
 	}
 	
 	public function getTable($type = 'Rabbit', $prefix = 'RabbitTable', $config = array())
@@ -49,14 +57,17 @@ class RabbitModelImport extends JModelAdmin
 	*/
 	public function import ( $importData ) {
 		
+		$exit_status = 0;
+		
 		// @TODO: Здесь выполняем запись в базу данных. Устанавливаем статус результата. Записываем информацию в отчеты
 		try {
 			DBHelper::import ( $importData );
 		} catch ( Exception $e ) {
 			// @TODO: перенаправление на страницу ошибки
-			echo $e -> getMessage (  );
+			$this -> import_report ['error'] = $e -> getMessage (  );
+			$exit_status = 1;
 		}
 		
-		return 0;
+		return $exit_status;
 	}
 }

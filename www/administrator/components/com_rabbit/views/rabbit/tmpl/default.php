@@ -35,7 +35,7 @@ JFactory::getDocument()->addStyleDeclaration(
     method="post" name="adminForm" id="adminForm" enctype="multipart/form-data" >
     <div class="form-horizontal">
         <fieldset class="adminform">
-            <legend><?php echo JText::_('COM_RABBIT_RABBIT_DETAILS'); ?></legend>
+            <legend><?php echo JText::_('COM_RABBIT_RABBIT_HEADER'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
                     <?php foreach ($this->form->getFieldset() as $field): ?>

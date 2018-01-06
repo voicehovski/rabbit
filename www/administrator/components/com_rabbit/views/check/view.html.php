@@ -12,6 +12,24 @@ defined('_JEXEC') or die('Restricted access');
 
 class RabbitViewCheck extends JViewLegacy
 {
+	// @PROBLEM: Эти константы нужно синхронизировать по значениям с xml-описателем формы
+	const UNKNOWN_CONTENT_TYPE = '0';
+	const AUTO_CONTENT_TYPE = '1';
+	const CLOTHES_CONTENT_TYPE = '2';
+	const FABRICS_CONTENT_TYPE = '3';
+	const TEXTILE_CONTENT_TYPE = '4';
+	
+	const UNKNOWN_PRODUCT_VARIANT_DEF = '0';
+	const DEFAULT_PRODUCT_VARIANT_DEF = '255';
+	const AUTO_PRODUCT_VARIANT_DEF = '1';
+	const SKUPARSING_1_PRODUCT_VARIANT_DEF = '2';
+	const SKUPARSING_2_PRODUCT_VARIANT_DEF = '3';
+	const SKUPARSING_3_PRODUCT_VARIANT_DEF = '4';
+	const SKULIST_PRODUCT_VARIANT_DEF = '11';
+	const CATEGOEYLIST_PRODUCT_VARIANT_DEF = '12';
+	const ANOTHERFIELDS_PRODUCT_VARIANT_DEF = '13';
+	const ADDITIONALFIELDS_PRODUCT_VARIANT_DEF = '14';
+	
 	//protected $form = null;
 	protected $check_status = null;
 	protected $cellErrors = array (  );
@@ -57,15 +75,16 @@ class RabbitViewCheck extends JViewLegacy
 		
 		// Получаем остальные параметры импорта
 		$content_type = RabbitHelper::restore_variable ( 'content_type' );
+		$product_variant_def = RabbitHelper::restore_variable ( 'product_variant_def' );
 		$convert_images = RabbitHelper::restore_variable ( 'convert_images' );	//null or 1
 		$images_packed = RabbitHelper::restore_variable ( 'images_packed' );
 		$import_type = RabbitHelper::restore_variable ( 'import_type' );
 		
 		// Через поле полноразмерных изображений загрузка обязательна. Множество изображений или архив
-		// @TODO: Способы возврата ошибок и прерывания работы скрпта (как выход из функции). Например метка на скобки
+		// @TODO: Способы возврата ошибок и прерывания работы скрипта (как выход из функции). Например метка на скобки
 		try {
 			if ( empty ( $images ) || ! is_array ( $images ) ) {
-				throw new Exception ( "Images are missing" );
+				goto end_of_image_processing;
 			}
 			
 			// @TODO: Распаковка архива. Содержимое архива может не соответствовать, так что нужно проверять
@@ -101,6 +120,8 @@ class RabbitViewCheck extends JViewLegacy
 				// @SEE: https://docs.joomla.org/How_to_use_the_filesystem_package, https://api.joomla.org/cms-3/classes/JFolder.html
 				
 			}
+			
+			end_of_image_processing:
 		} catch ( Exception $e ) {
 			echo "TROUBLES WHILE IMAGE PROCESSING<br/>{$e -> getMessage (  )}<br/>";
 		}
@@ -115,9 +136,45 @@ class RabbitViewCheck extends JViewLegacy
 				// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
 				$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
 				
-				// @TODO: Здесь нужно определить тип продукции (чекбокс или по заголовкам/категориям) и создать соответствующий объект. Пользователей и заказы, видимо лучше импортировать в другом виде
+				// @TODO: Пользователей и заказы, видимо лучше импортировать в другом виде
+				// @TODO: Идентификаторы типов продукции хранить в одном месте - xml-описателе или базе данных, но не константами которые нужно синхронизировать с xml
 				// Теперь можно создавать ассоциативные формы строк csv и обращаться к данным в них по заданным кодам, а не по исходным индексам
-				$csvMeta = CsvMetadata::createProductMetadata ( $csv -> headers (  ) );
+				if ( $content_type == self::AUTO_CONTENT_TYPE ) {
+					$content_type = self::fetchProductionType ( $csv );
+				}
+				
+				switch ( $content_type ) {
+					case self::CLOTHES_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createClothesMetadata ( $csv -> headers (  ) );	//clothes
+						break;
+					case self::FABRICS_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createFabricsMetadata ( $csv -> headers (  ) );
+						break;
+					case self::TEXTILE_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createTextileMetadata ( $csv -> headers (  ) );
+						break;
+					default:
+						throw new Exception ( "Unknown production type: " . $content_type );
+				}
+				
+				/*		Устанавливаем функцию вариаций для продукции
+
+					Функция вариаций возвращает набор свойств товара (товар - это то что пользователь видит в категории) определяющих варианты товара (варианты - то что пользователь должен выбрать при покупке). На текущий момент это цвет и размер
+				
+					По умолчанию функции используют артикул для определения вариаций. Формат артикула отличается для разных категорий, поэтому и функции отличаются и определены для различных типов товаров в статических фабричных методах CsvMetadata. Для некоторых товаров могут потребоваться специальные способы определения вариаций. Соответствующие параметры предусмотрены в первичной форме импорта.
+					
+					@TODO: Сделать вменяемый и безопасный выбор специальных функций вариаций и списков продукции. Шаблон РВ? Имя Поля? Передавать функцию? Список предустановленных? Функции create_product_variant_getter, fetchProductVariantProperties, языковые константы и первичная форма.
+				*/
+				// По умолчанию используем функции вариаций, определенные в метаданных. 
+				if ( $product_variant_def == self::DEFAULT_PRODUCT_VARIANT_DEF ) {
+					$getProductVariantProperties =
+					function ( $normalizedAssocRow ) use ( $csvMeta ) {
+						return $csvMeta -> getProductVariantProperties ( $normalizedAssocRow );
+					};
+				// Явное указание использовать дополнительные функции вариаций
+				} else { 
+					$getProductVariantProperties = self::create_product_variant_getter ( $product_variant_def );
+				}
 				
 				foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
 					
@@ -138,16 +195,18 @@ class RabbitViewCheck extends JViewLegacy
 					
 					
 					// @QUESTION: where should we catch errors like 'missing sku'? As critical error in cellErrors?
-					// Получаем свойства, определяющие разновидности одного товара . Функции получения этих свойств отличаются для разных категорий товаров. Соответствующие функции определены в статических фабричных методах CsvMetadata
-					$productVariantProperties = $csvMeta -> getProductVariantProperties ( $assocRow ['sku'] );//code=> color=> size=>
+					// Получаем свойства, определяющие разновидности одного товара
+					$productVariantProperties = $getProductVariantProperties ( $assocRow );//code=> color=> size=>
+					
 					if ( ! $productVariantProperties ) {
 						$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku', 2 );
 						continue;
 					}
 
 					// @QUESTION: Нужно ли сохранять ассоциативные массивы или они больше не понадобятся?
+					// @ATTENTION: В array_merge при совпадающих строковых ключах важна последовательность аргументов
 					// Формируем структуру данных для дальнейшего импорта
-					$products -> add ( new ProductData ( $rowIndex, array_merge ( $productVariantProperties, $assocRow ) ) );
+					$products -> add ( new ProductData ( $rowIndex, array_merge ( $assocRow, $productVariantProperties ) ) );
 					
 				}
 				
@@ -161,17 +220,12 @@ class RabbitViewCheck extends JViewLegacy
 				$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 				
 			} else {
-				echo "DEBUG: No table passed<br/>";
 				$this -> check_status = 3;
 			}
 		} catch (Exception $e) {
 			echo "{$e -> getMessage (  )} <br/>";
 			echo $e -> getTraceAsString (  );
 		}
-		
-		//$this -> check_status = rand ( 0, 2 );
-		echo "DEBUG: error status";
-	print_r ( $this -> check_status );
 		
 		// В зависимости от результатов проверки устанавливаем лайот и передаём в него ошибки/данные импорта
 		switch ( $this -> check_status ) {
@@ -211,6 +265,7 @@ class RabbitViewCheck extends JViewLegacy
 		JToolBarHelper::title($title, 'check');
 		
 		switch ( $this -> check_status ) {
+			case 3:
 			case 2:
 				JToolBarHelper::custom('rabbit', null, null, "CANCEL", false);
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
@@ -232,16 +287,93 @@ class RabbitViewCheck extends JViewLegacy
 
 	protected function checkImages ( $base, $resized, & $diff ) {
 			
-			if ( empty ( $resized ) || ! is_array ( $resized ) ) {
-				return false;
-			}	
-			
-			$diff = array_diff ( $base, $resized );
-			if ( ! empty ( $diff ) ) {
-				return false;
-			}
-			
-			return true;
+		if ( empty ( $resized ) || ! is_array ( $resized ) ) {
+			return false;
+		}	
+		
+		$diff = array_diff ( $base, $resized );
+		if ( ! empty ( $diff ) ) {
+			return false;
 		}
+		
+		return true;
+	}
 	
+	/*		Определяет тип продукции в таблице, то есть перечень ожидаемых полей
+	
+		Используется в случае если тип не указан в форме ввода. Определять, видимо, следует по именам категорий
+	*/
+	protected static function fetchProductionType ( $csv ) {
+		
+		return self::CLOTHES_CONTENT_TYPE;
+	}
+
+	protected static function fetchProductVariantProperties ( $csv ) {
+		
+		return self::SKUPARSING_1_PRODUCT_VARIANT_DEF;
+	}
+	
+	/*		Функции для определения вариаций товара
+	
+		Следует использовать если стандартный парсинг артикула не применим
+		Например: список артикулов/шаблон - функция, список категорий/шаблон - функция, все - функция, не определять
+	*/
+	protected static function create_product_variant_getter ( $def ) {
+		
+		if ( $def == self::AUTO_PRODUCT_VARIANT_DEF ) {		// Автоматическое определение способа парсинга
+			$def = self::fetchProductVariantProperties ( $csv );
+		}
+		
+		switch ( $def ) {
+			case self::SKUPARSING_1_PRODUCT_VARIANT_DEF:	// Парсинг артикула
+				$getter = function ( $row ) {
+					$property = $row [ 'sku' ];
+					$parts =  explode ( '/', $property );
+					
+					if ( count ( $parts ) != 3 ) {
+						throw new Exception ( 'Sku parsing error' . " [$property]" );
+					}
+					
+					return array ( 'code' => $parts [0], 'size' => $parts [1], 'color' => $parts [2] );					
+				};
+				break;
+				
+			case self::SKUPARSING_2_PRODUCT_VARIANT_DEF:	// Парсинг артикула
+				$getter = function ( $row ) {
+					
+				};
+				break;
+			case self::SKUPARSING_3_PRODUCT_VARIANT_DEF:	// Парсинг артикула
+				$getter = function ( $row ) {
+					
+				};
+				break;
+			case self::SKULIST_PRODUCT_VARIANT_DEF:	// Определение по артикулу
+				$getter = function ( $row ) {
+					
+				};
+				break;
+			case self::CATEGOEYLIST_PRODUCT_VARIANT_DEF:	// Определение по категории
+				$getter = function ( $row ) {
+					
+				};
+				break;
+			case self::ANOTHERFIELDS_PRODUCT_VARIANT_DEF:	// Определение по другим полям 
+				$getter = function ( $row ) {
+					
+				};
+				break;
+			case self::ADDITIONALFIELDS_PRODUCT_VARIANT_DEF:	// Явно указанные варианты в дополнительных полях
+				$getter = function ( $row ) {
+					return array (  );
+				};
+				break;
+			default:
+				throw new Exception ( "Unknown product varian def: " . $def );
+		}
+		
+		return $getter;
+		
+	}
+
 }
