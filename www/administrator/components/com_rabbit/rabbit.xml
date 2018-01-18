@@ -12,7 +12,7 @@
 		Версии должен соответствовать файл в директории sql\updates\mysql
 		Номер версии будет записан при обновлении в таблицу _shemas
 	-->
-	<version>0.0.3</version>
+	<version>0.0.4</version>
 	<description>Component for import and export</description>
  
 	<install>

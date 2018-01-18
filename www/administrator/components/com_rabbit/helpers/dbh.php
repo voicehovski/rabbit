@@ -2,6 +2,24 @@
 
 defined('_JEXEC') or die('Restricted access');
 
+	define ( 'LCF_TABLE_NAME', '#__localized_custom_fields' );
+	define ( 'LCF_ID_FIELD_NAME', 'lcf_id' );
+	define ( 'LCF_NAME_FIELD_NAME', 'lcf_name' );
+	define ( 'LCF_PARENT_ONLY_FIELD_NAME', 'parent_only' );
+	
+	define ( 'LCF_VALUE_TABLE_NAME', '#__localized_custom_field_values' );
+	define ( 'LCF_VALUE_ID_FIELD_NAME', 'lcf_value_id' );
+	define ( 'LCF_VALUE_LCF_ID_FIELD_NAME', 'lcf_id' );
+	define ( 'LCF_VALUE_PRODUCT_ID_FIELD_NAME', 'vm_product_id' );
+	define ( 'LCF_VALUE_PARENT_ID_FIELD_NAME', 'vm_parent_id' );
+	define ( 'LCF_VALUE_LANG_FIELD_NAME', 'lang' );
+	define ( 'LCF_VALUE_FIELD_NAME', 'lcf_value' );	//Использовано не только лишь здесь. Еще в process_localized_properties, но коряво
+	define ( 'LCF_VALUE_IMAGE_FIELD_NAME', 'image_file' );
+	
+	define ( 'LCF_TO_CATEGORY_TABLE_NAME', '#__lcf_to_category' );
+	define ( 'LCF_TO_CATEGORY_LCF_ID_FIELD_NAME', 'lcf_id' );
+	define ( 'LCF_TO_CATEGORY_CATEGORY_ID_FIELD_NAME', 'category_id' );
+
 
 class DBHelper {
 	
@@ -51,18 +69,18 @@ class DBHelper {
 	}
 	
 	public static function import ( $import_data ) {
-		
+		ini_set('max_execution_time', 900);
 		//		==	Test block	==
-			//self::test ( $import_data );
-			//return;
+			// self::test ( $import_data );
+			// return;
 		//		==	End of test block	==
 		
 		// $product = new Product ( $raw_product, $import_data ['meta'] );
 		
-		foreach ( $import_data ['data'] -> groupBy ( 'code' ) as $product_group ) {
+		foreach ( $import_data ['data'] -> groupBy ( '(code)' ) as $product_group ) {
 			
 			if ( $product_group -> isEmpty (  ) ) {
-				throw new Exception ( "Empty result of groupBy ( 'code' ) method" );
+				throw new Exception ( "Empty result of groupBy ( '(code)' ) method" );
 			}
 			
 			// Извлекаем все продукты группы, помеченные маркером главного
@@ -87,12 +105,12 @@ class DBHelper {
 			// Создаём / обновляем продукт, категории, изображения и значения строковых КФ и ККФ. Также можно создать пустое значение мульти-КФ
 			// Это "служебный" продукт с суррогатным артикулом. Все продукты которые реально можно заказать будут в дочерних
 			$main_product = new Product ( $main_product_raw, $import_data ['meta'] );
-			$main_product -> identifier (  $main_product_raw -> get ( 'code' ) );
+			$main_product -> identifier (  $main_product_raw -> get ( '(code)' ) );
 			$main_product_id = self::process_product ( $main_product );
 			self::process_images ( $main_product, $main_product_id );
 			self::process_multiproduct_cf_params ( $main_product_id );
 			self::process_properties ( $main_product, $main_product_id );
-			// self::process_localized_properties ( $main_product, $main_product_id );
+			self::process_localized_properties ( $main_product, $main_product_id );
 			self::process_categories ( $main_product, $main_product_id );
 			
 			// Создаём / обновляем дочерние товары, изображения (существующие только подвязываем к товару, не пересоздаём), КФ и ККФ (определяющие варианты КФ берем из конфигурации). Категории не нужны
@@ -101,8 +119,7 @@ class DBHelper {
 				$product_variant = new Product ( $product_variant_raw, $import_data ['meta'] );
 				$product_variant_id = self::process_product ( $product_variant, $main_product_id );
 				self::process_images ( $product_variant, $product_variant_id );
-				// @TODO: Здесь нужно, в том числе, записать в КФ дочернего продукта вспомогательные текстовые поля для мульти. ИД поля - в конфиге. Значения можно брать прямо из таблицы, только маркировать, например "size[42], color[486]".
-				self::process_properties ( $product_variant, $product_variant_id );
+				// self::process_properties ( $product_variant, $product_variant_id );
 				self::process_specific_product_variant_cf_values ( $product_variant, $product_variant_id );
 			}
 			
@@ -145,20 +162,34 @@ class DBHelper {
 			if ( $product_id === null ) {
 				throw new Exception ( 'Couldn`t create product. Sku: ' . $product -> getDebugInfo (  ) );
 			}
-			if ( ! self::createProductLocalization ( $product_id, $product, self::$config ['default-locale'] ) ) {
+			
+			if ( $parent_id === 0 ) {
+				$product_localization = self::createProductLocalizationObject ( $product_id, $product );
+			} else {
+				$product_localization = self::createChildProductLocalizationObject ( $product_id, $product );
+			}
+			
+			if ( ! self::createProductLocalization ( $product_localization, self::$config ['default-locale'] ) ) {
 				throw new Exception ( 'Couldn`t create product localization. Sku: ' . $product -> getDebugInfo (  ) );
 			}
 		} else {
 			if ( ! self::updateProduct ( $product_id, $product, $parent_id ) ){
 				throw new Exception ( 'Couldn`t update product. Sku: ' . $product -> getDebugInfo (  ) );
 			}
+			
+			if ( $parent_id === 0 ) {
+				$product_localization = self::createProductLocalizationObject ( $product_id, $product );
+			} else {
+				$product_localization = self::createChildProductLocalizationObject ( $product_id, $product );
+			}
+			
 			if ( self::productLocalizationExists ( $product_id, self::$config ['default-locale'] ) ) {	
-				if ( ! self::updateProductLocalization ( $product_id, $product, self::$config ['default-locale'] ) ) {
+				if ( ! self::updateProductLocalization ( $product_localization, self::$config ['default-locale'] ) ) {
 					throw new Exception ( 'Couldn`t update product localization. Sku: ' . $product -> getDebugInfo (  ) );
 				}
 			} else {
 				// @TODO: Warning, product without localization
-				if ( ! self::createProductLocalization ( $product_id, $product, self::$config ['default-locale'] ) ) {
+				if ( ! self::createProductLocalization ( $product_localization, self::$config ['default-locale'] ) ) {
 					throw new Exception ( 'Couldn`t create product localization for existing product. Sku: ' . $product -> getDebugInfo (  ) );
 				}
 			}
@@ -173,9 +204,9 @@ class DBHelper {
 	*/
 	//@LIGHT-TESTED 14:55 06.12.2018
 	protected static function process_images ( $product, $product_id ) {
+		
 		$current_image_id_list = self::getProductImages ( $product_id );
-		echo ("current images of $product_id<br/>");
-		print_r ( $current_image_id_list );
+		
 		foreach ( $product -> images (  ) as $image ) {
 			
 			$image_id = self::getImageId ( self::$config ['product-image-path'] . $image -> identifier (  ) );	// В качестве идентификатора имя изображения. Правилно ли?
@@ -201,8 +232,7 @@ class DBHelper {
 				}
 			}
 		}
-		echo ("2 current images of $product_id<br/>");
-		print_r ( $current_image_id_list );
+
 		foreach ( $current_image_id_list as $id => $value ) {
 			if ( ! self::unbindImage ( $product_id, $value ) ) {
 				throw new Exception ( "Couldn`t bind image: {$image -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
@@ -213,9 +243,20 @@ class DBHelper {
 	
 	/*		Импорт классических КФ
 	
-		Это не локализуемые КФ и не вариант-КФ. То есть, по сути, различные скрытые признаки или аттрибуты корзины с возможностью модификации цены. Локализовать их можно, но вручную, поиск по ним затруднен, так что их не следует делать много, работу с ними не следует делать частой, поскольку она предполагает ручное вмешательство в языковые файлы
+		@DESCRIPTION: Это не локализуемые КФ и не вариант-КФ. То есть, по сути, различные скрытые признаки или аттрибуты корзины с возможностью модификации цены. Локализовать их можно, но вручную, поиск по ним затруднен, так что их не следует делать много, работу с ними не следует делать частой, поскольку она предполагает ручное вмешательство в языковые файлы
 		
 		В метаданных имеют type = 1
+		
+		@Q: Свойства бывают разных типов. У них разные допустимые значения и наборы параметров. Как это учесть?
+		@A: Видимо здесь следует импортировать только некоторые типы, например логический, строки и числа. Под вопросом дата и время. Остальные пока не трогаем
+		
+		@INFO:
+		Поле custom_params при создании из админпанели для типа:
+		рядок		addEmpty=0|selectType=0|
+		властивість	round=""|digits=""|
+		логічний	addEmpty=0|selectType=0|
+		
+		
 	*/
 	//@NEED_TEST
 	protected static function process_properties ( $product, $product_id ) {
@@ -224,9 +265,9 @@ class DBHelper {
 			
 			$property_id = self::getPropertyId ( $imported_property -> identifier (  ) );	//custom_title, уникальность под вопросом
 			
-			// Создание нового КФ - не штатная ситуация, требующая обсуждения. Поэтому КФ будем создавать вручную, а обнаружениие в таблице нового КФ считать ошибкой. Кроме того различные типы КФ имеют свои наборы параметров, что усложняет их автоматическое создание
+			// Создание нового КФ - не штатная ситуация, требующая обсуждения. Поэтому КФ будем создавать вручную. Обнаружение здесь нового имени КФ может означать что метаданные таблиц импорта были изменены (например, мы добавили туда новое поле и установили для него тип 1), но забыли создать соответствующие КФ через панель администрирования. Другая ситуация - мы удалили КФ в панели администрирования, но не внесли соответствующие изменения в метаданные таблиц импорта
 			if ( $property_id === null ) {
-				throw new Exception ( "Unknown custom: " . $imported_property -> identifier (  ) );
+				throw new Exception ( "Unknown custom: " . $imported_property -> identifier (  ) . " Proudct id: $product_id" );
 				//$property_id = self::createProperty ( $imported_property -> identifier (  ) );
 				//if ( $property_id === null ) {
 				//	throw new Exception ( "Couldn`t create property: {$imported_property -> getDebugInfo (  )}" );
@@ -235,8 +276,9 @@ class DBHelper {
 			
 			// Получаем перечень значений свойства ИД => значение для текущего продукта
 			// Здесь только строковоие значения без параметров
+			//@NOTE: Менять getProductPropertyFieldValues на bis-вариант не стоит, иначе будет неудобно array_search
 			$value_list_db = self::unsophisticate_assoc ( self::getProductPropertyFieldValues ( $product_id, $property_id ), 'customfield_value' );
-			foreach ( $imported_property -> value (  ) as $imported_value ) {
+			foreach ( $imported_property -> values (  ) as $imported_value ) {
 				// @NOTE: Возвращает ключ первого найденного значения. Регистрозависима. Для поиска нескольких значений: array array_keys ( $array, $imported_value ) Тоже регистрозависима
 				$k = array_search ( $imported_value, $value_list_db );
 				if ( $k !== false ) {
@@ -254,6 +296,47 @@ class DBHelper {
 			}
 		}		
 	}
+	
+	/*		Создаёт значение КФ для дочернего продукта только если оно указано в таблице импората и отличается от такового в родительском товаре
+	
+		Пока будем считать что основные аттрибуты и обычные свойства дочерних товаров наследуются от основного
+		Отличаться будут только вариант-КФ (в основном товаре они вообще не нужны) и, возможно, соответствующие локализуемые поля для поиска и фильтрации. Их тоже можно не делать в родительском
+		
+		Лена пусть пока заполняет все строки, как раньше - так будет проще, если она ошибется с маркером. В переспективе можно положить что основным является тот товар, в котором заполнены все поля
+	*/
+	//@NEED_TEST, NEED_IMPLEMENTATION
+	protected static function process_child_properties ( $product, $product_id, $parent_id ) {
+		
+		//@TODO: Проверить что parent_id передан
+		
+		/*foreach ( $product -> properties (  ) as $p ) {
+			
+			if ( empty ( $p -> values (  ) ) ) {
+				continue;
+			}
+			
+			$property_id = self::getPropertyId ( $p -> identifier (  ) );
+			if ( ! $property_id ) {
+				throw new Exception ( "Custom fields is missing: {$p -> identifier (  )}" );
+			}
+			
+			$parent_values = self::getProductPropertyFieldValues_bis ( $property_id, $parent_id );
+			if ( empty ( $parent_values ) ) {
+				//Добавить свойство в дочерний
+			}
+			
+			foreach ( $p -> values (  ) as $imported_value ) {
+				//Если существует в родительском - будет унаследовано, новый цикл
+				//Иначе, создаём новое значение КФ в дочернем
+			
+			}
+			if ( strcmp ( $parent_value [0] ['customfield_value'], $p -> values (  ) ) === 0 ) {
+				continue;
+			}
+			
+			self::addProductPropertyValue ( $product_id, $property_id, $p -> values (  ), array ( 'override' => $parent_value [0] ['virtuemart_customfield_id'] ) );
+		}*/
+	}
 
 	/*		Импорт локализуемых КФ
 	
@@ -262,37 +345,38 @@ class DBHelper {
 	//@NEED_TEST
 	protected static function process_localized_properties ( $product, $product_id ) {
 		
-		foreach ( $product -> localizedProperties (  ) as $lp ) {
+		foreach ( $product -> localizedProperties (  ) as $imported_lcf ) {
 			
-			$lp_id = self::getLocalizedPropertyId ( $lp -> identifier (  ) );
-			if ( ! $lp_id ) {
-				$lp_id = self::createLocalizedProperty ( $lp -> identifier (  ) );	//$lang
-				if ( ! $lp_id ) {
-					throw new Exception ( "Couldn`t create localized property: {$lp -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+			$property_name = "PROPERTY_NAME_" . strtoupper ( self::normalizeSlug ( $imported_lcf -> identifier (  ), true ) );
+			$imported_lcf_id = self::getLocalizedPropertyId ( $property_name );
+			
+			if ( ! $imported_lcf_id ) {
+				//throw new Exception ( "Unknown LCF: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" ); 
+				
+				$imported_lcf_id = self::createLocalizedProperty ( $property_name );
+				if ( ! $imported_lcf_id ) {
+					throw new Exception ( "Couldn`t create localized property: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 				}
 				// @QUESTION: Делаем локализацию имен свойств здесь? Или потом вручную - их все равно не много и добавляться будут редко?
-				/* 
-				if ( ! self::createLPLocalization ( $lp_id, LOCALIZED_LP_TITILE ,$config ['default-locale'] ) ) {
-					throw new Exception ( "Couldn`t localize localized property: {$lp -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+				if ( ! self::createLPLocalization ( $imported_lcf_id, $imported_lcf -> identifier (  ) ,$config ['default-locale'] ) ) {
+					throw new Exception ( "Couldn`t localize localized property: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 				}
-				*/
-				
 			}
 			
-			$current_lp_values = self::unsophisticate_assoc ( self::getProductLPValues ( $product_id, $lp_id, self::$config ['default-locale'] ), 'ccf_value' );
+			$value_list_db = self::unsophisticate_assoc ( self::getProductLPValues ( $product_id, $imported_lcf_id, self::$config ['default-locale'] ), LCF_VALUE_FIELD_NAME );
 			
-			foreach ( $lp -> values (  ) as $value ) {
-				$k = array_search ( $value, $current_lp_values );
+			foreach ( $imported_lcf -> values (  ) as $value ) {
+				$k = array_search ( $value, $value_list_db );
 				if ( $k !== false ) {
-					unset ( $current_lp_values [$k] );
+					unset ( $value_list_db [$k] );
 				} else {
-					if ( ! self::addProductLPValue ( $product_id, $lp_id, self::$config ['default-locale'], $value ) ) {
-						throw new Exception ( "Couldn`t bind localized property value: {$lp -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+					if ( ! self::addProductLPValue ( $product_id, $imported_lcf_id, self::$config ['default-locale'], $value ) ) {
+						throw new Exception ( "Couldn`t bind localized property value: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 					}
 				}
 			}
 			
-			foreach ( $current_lp_values as $key => $v ) {
+			foreach ( $value_list_db as $key => $v ) {
 				self::removeProductLPValue ( $key );
 			}
 		}		
@@ -307,37 +391,37 @@ class DBHelper {
 	//@TESTED 13:37 05.12.2018, RENAMED
 	protected static function process_specific_product_variant_cf_values ( $product, $product_id ) {
 		
-		//@TODO: Можно вынести в глобал
-		$multi_param_cf_id = self::getPropertyId ( self::$config ['multiproduct-cf-paramcf-name'] );
+		// Проверка существования КФ происходит в методе
+		$cf_id = self::get_multiproduct_cf_paramcf_id (  );
 		// Извлекаем текущие вариант-свойства продукта из ТБД 
-		$variant_properties = self::get_specific_product_variant_cf_values ( $product_id, $multi_param_cf_id );	// {id=>value,...} from db
+		$variant_properties = self::get_specific_product_variant_cf_values ( $product_id, $cf_id );	// {id=>value,...} from db
 		// Извлекаем новые вариант-свойства продукта из таблицы импорта
 		$import_variant_properties = $product -> variantProperties (  );
 		
 		// Проверяем валидность значений текущих вариант-свойств. Они должны начинающиеся с соответствующих преффиксов и не повторяться
 		//@TODO: Если значение не соответствует шаблону, то есть не начинается с преффикса, нужно что-то длать - удалить, выдать предупреждение
 		$sizes_vp = self::elem_starts_with ( self::$config ['size-cfvalue-preffix'], $variant_properties );
-		// Если повторяется - выдать предупреждение и ...
+		// Несколько значений данного КФ для одного продукта, начинающихся с преффикса размера
 		if ( count ( $sizes_vp ) > 1 ) {
-			throw new Exception ( "Several same variant properties. Product id: $product_id. Property id: $multi_param_cf_id"  );
+			throw new Exception ( "Several same variant properties. Product id: $product_id. Property id: $cf_id"  );
 		}
 		// Если вариант-свойств в текущем продукте нет - создать
 		if ( empty ( $sizes_vp ) ) {
 			self::addProductPropertyValue (
 				$product_id,
-				$multi_param_cf_id,
-				self::$config ['size-cfvalue-preffix'] . $import_variant_properties ['size'],
+				$cf_id,
+				self::$config ['size-cfvalue-preffix'] . $import_variant_properties ['(size)'],
 				array ( 'customfield_params' => '', 'customfield_price' => '0' )
 			);
 		} else {
 			// Если одно и совпадает и совпадает по значению с новым - обновление не нужно, следующий цикл
-			if ( strcmp ( $sizes_vp [0]['value'], self::$config ['size-cfvalue-preffix'] . $import_variant_properties ['size'] ) === 0 ) {
+			if ( strcmp ( $sizes_vp [0]['value'], self::$config ['size-cfvalue-preffix'] . $import_variant_properties ['(size)'] ) === 0 ) {
 				goto color;
 			// Если не совпадает - обновить
 			} else {
 				self::updateProductPropertyValue (
 					$sizes_vp [0]['key'],
-					array ( 'customfield_value' => self::$config ['size-cfvalue-preffix'] . $import_variant_properties ['size'] )
+					array ( 'customfield_value' => self::$config ['size-cfvalue-preffix'] . $import_variant_properties ['(size)'] )
 				);
 			}
 		}
@@ -347,23 +431,23 @@ class DBHelper {
 		$colors_vp = self::elem_starts_with ( self::$config ['color-cfvalue-preffix'], $variant_properties );
 		
 		if ( count ( $colors_vp ) > 1 ) {
-			throw new Exception ( "Several same variant properties. Product id: $product_id. Property id: $multi_param_cf_id"  );
+			throw new Exception ( "Several same variant properties. Product id: $product_id. Property id: $cf_id"  );
 		}
 		
 		if ( empty ( $colors_vp ) ) {
 			self::addProductPropertyValue (
 				$product_id,
-				$multi_param_cf_id,
-				self::$config ['color-cfvalue-preffix'] . $import_variant_properties ['color'],
+				$cf_id,
+				self::$config ['color-cfvalue-preffix'] . $import_variant_properties ['(color)'],
 				array ( 'customfield_params' => '', 'customfield_price' => '0' )
 			);
 		} else {
-			if ( strcmp ( $colors_vp [0]['value'], self::$config ['color-cfvalue-preffix'] . $import_variant_properties ['color'] ) === 0 ) {
+			if ( strcmp ( $colors_vp [0]['value'], self::$config ['color-cfvalue-preffix'] . $import_variant_properties ['(color)'] ) === 0 ) {
 				goto finish;
 			} else {
 				self::updateProductPropertyValue (
 					$colors_vp [0]['key'],
-					array ( 'customfield_value' => self::$config ['color-cfvalue-preffix'] . $import_variant_properties ['color'] )
+					array ( 'customfield_value' => self::$config ['color-cfvalue-preffix'] . $import_variant_properties ['(color)'] )
 				);
 			}
 		}
@@ -676,21 +760,20 @@ class DBHelper {
 	@FRATURES:
 	* Если запись с таким $product_id уже существует, функция вернет ЛОЖЪ, что позволяет контролировать контроль
 */
-	public static function createProductLocalization ( $product_id, $product, $locale ) {
+	public static function createProductLocalization ( $product_localization, $locale ) {
 		
 		return JFactory::getDbo (  ) -> insertObject (
 			"#__virtuemart_products_$locale",
-			self::createProductLocalizationObject ( $product_id, $product )
+			$product_localization
 		);
 	}
 	
-	public static function updateProductLocalization ( $product_id, $product, $locale ) {
+	public static function updateProductLocalization ( $product_localization, $locale ) {
 		
-		$localization_object = self::createProductLocalizationObject ( $product_id, $product );
-		//unset ( $localization_object -> slug );
+		//unset ( $product_localization -> slug );
 		$return = JFactory::getDbo (  ) -> updateObject (
 			"#__virtuemart_products_$locale",
-			$localization_object,
+			$product_localization,
 			'virtuemart_product_id'
 		);
 		
@@ -708,6 +791,16 @@ class DBHelper {
 		// meta...	metadesc, metakey, customtitle
 		$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
 		//$lcl -> slug = self::normalizeSlug ( $product -> identifier (  ), ! self::$config ['localized-slug'] );
+		
+		return $lcl;
+	}
+	
+	public static function createChildProductLocalizationObject ( $product_id, $product ) {
+		
+		$lcl = new stdClass (  );
+		
+		$lcl -> virtuemart_product_id = $product_id;
+		$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
 		
 		return $lcl;
 	}
@@ -1095,9 +1188,9 @@ class DBHelper {
 	
 	public static function getLocalizedPropertyId ( $identifier ) {
 		$s = new stdClass (  );
-		$s -> column_name = 'ccf_id';
-		$s -> table_name = '#__rabbit_ccf';
-		$s -> condition_column = 'name';
+		$s -> column_name = LCF_ID_FIELD_NAME;
+		$s -> table_name = LCF_TABLE_NAME;
+		$s -> condition_column = LCF_NAME_FIELD_NAME;
 
 		$results = self::get_id_ ( $identifier, $s );
 		
@@ -1111,11 +1204,23 @@ class DBHelper {
 		}		
 	}
 	
-	public static function createLocalizedProperty ( $identifier ) {
-		$columns = array ( 'name' ); 
+	// @NOTE: Переменная не может быть использована в качестве ключа массива. Константа - может
+	public static function createLocalizedProperty ( $identifier, $field_list = array ( LCF_PARENT_ONLY_FIELD_NAME => '1' ) ) {
+		
+		//Если не создаём новые свойства в скрипте. Правда здесь параметров маловато, но можно словить и перевыбросить
+		//throw new Exception ( "Unknown LCF: {$identifier}" );
+		
+		$columns = array ( LCF_NAME_FIELD_NAME ); 
 		$values = array ( $identifier );
 
-		return self::create_ ( $columns, $values, '#__rabbit_ccf' );	
+		if ( is_array ( $field_list ) ) {
+			foreach ( $field_list as $field_name => $value ) {
+				$columns [] = $field_name;
+				$values [] = $value;
+			}
+		}
+		
+		return self::create_ ( $columns, $values, LCF_TABLE_NAME );	
 	}
 	
 	public static function getProductLPValues ( $product_id, $lp_id, $locale ) {
@@ -1123,23 +1228,35 @@ class DBHelper {
 		$db = JFactory::getDbo (  );
 		$query = $db -> getQuery ( true );
 
-		$query -> select ( $db -> quoteName ( 'id' ) );
-		$query -> select ( $db -> quoteName ( 'ccf_value' ) );
-		$query -> from ( $db -> quoteName ( '#__rabbit_vmp_ccf' ) );
-		$query -> where ( $db -> quoteName ( 'vmp_id' ) . ' = ' . $product_id );
-		$query -> where ( $db -> quoteName ( 'ccf_id' ) . ' = ' . $lp_id );
-		$query -> where ( $db -> quoteName ( 'lang' ) . ' = ' . $db -> quote ( $locale ) );
+		$query -> select ( $db -> quoteName ( LCF_VALUE_ID_FIELD_NAME ) );
+		$query -> select ( $db -> quoteName ( LCF_VALUE_FIELD_NAME ) );
+		$query -> from ( $db -> quoteName ( LCF_VALUE_TABLE_NAME ) );
+		$query -> where ( $db -> quoteName ( LCF_VALUE_PRODUCT_ID_FIELD_NAME ) . ' = ' . $product_id );
+		$query -> where ( $db -> quoteName ( LCF_ID_FIELD_NAME ) . ' = ' . $lp_id );
+		$query -> where ( $db -> quoteName ( LCF_VALUE_LANG_FIELD_NAME ) . ' = ' . $db -> quote ( $locale ) );
 
 		$db -> setQuery ( $query );
 		
-		return $db -> loadAssocList ( 'id' );
+		return $db -> loadAssocList ( LCF_VALUE_ID_FIELD_NAME );
 	}
 	
-	public static function addProductLPValue ( $product_id, $lp_id, $locale, $value ) {
-		$columns = array ( 'vmp_id', 'ccf_id', 'lang', 'ccf_value' ); 
+	public static function addProductLPValue ( $product_id, $lp_id, $locale, $value,
+		$field_list = array (
+			LCF_VALUE_PARENT_ID_FIELD_NAME => '0',
+			LCF_VALUE_IMAGE_FIELD_NAME => '',
+		)
+	) {
+		$columns = array ( LCF_VALUE_PRODUCT_ID_FIELD_NAME, LCF_ID_FIELD_NAME, LCF_VALUE_LANG_FIELD_NAME, LCF_VALUE_FIELD_NAME ); 
 		$values = array ( $product_id, $lp_id, $locale, $value );
 
-		return self::create_ ( $columns, $values, '#__rabbit_vmp_ccf' );
+		if ( is_array ( $field_list ) ) {
+			foreach ( $field_list as $field_name => $value ) {
+				$columns [] = $field_name;
+				$values [] = $value;
+			}
+		}
+		
+		return self::create_ ( $columns, $values, LCF_VALUE_TABLE_NAME );
 		
 	}
 	
@@ -1149,10 +1266,10 @@ class DBHelper {
 		$query = $db -> getQuery ( true );
 		
 		$conditions = array (
-			$db -> quoteName ( 'id' ) . ' = ' . $db -> quote ( $value_id )
+			$db -> quoteName ( LCF_VALUE_ID_FIELD_NAME ) . ' = ' . $db -> quote ( $value_id )
 		);
 		
-		$query -> delete ( $db -> quoteName ( '#__rabbit_vmp_ccf' ) );
+		$query -> delete ( $db -> quoteName ( LCF_VALUE_TABLE_NAME ) );
 		$query -> where ( $conditions );
 		
 		$db -> setQuery ( $query );
@@ -1160,7 +1277,7 @@ class DBHelper {
 	}
 	
 	public static function createLPLocalization ( $lp_id, $name, $locale ) {
-		
+		return true;
 	}
 	
 //=====================	Data bases	================================
@@ -1292,20 +1409,20 @@ class DBHelper {
 		if ( ! $translit ) {
 			return mb_strtolower ( $st );
 		}
-		
+		//"ъ"=>"\'" - мягкий и твердый знак
 		$replacement = array( 
 			"й"=>"i","ц"=>"c","у"=>"u","к"=>"k","е"=>"e","н"=>"n", 
-			"г"=>"g","ш"=>"sh","щ"=>"sh","з"=>"z","х"=>"x","ъ"=>"\'", 
+			"г"=>"g","ш"=>"sh","щ"=>"sh","з"=>"z","х"=>"x","ъ"=>"", 
 			"ф"=>"f","ы"=>"i","в"=>"v","а"=>"a","п"=>"p","р"=>"r", 
 			"о"=>"o","л"=>"l","д"=>"d","ж"=>"zh","э"=>"ie","ё"=>"e", 
 			"я"=>"ya","ч"=>"ch","с"=>"c","м"=>"m","и"=>"i","т"=>"t", 
-			"ь"=>"\'","б"=>"b","ю"=>"yu", 
+			"ь"=>"","б"=>"b","ю"=>"yu", 
 			"Й"=>"I","Ц"=>"C","У"=>"U","К"=>"K","Е"=>"E","Н"=>"N", 
-			"Г"=>"G","Ш"=>"SH","Щ"=>"SH","З"=>"Z","Х"=>"X","Ъ"=>"\'", 
+			"Г"=>"G","Ш"=>"SH","Щ"=>"SH","З"=>"Z","Х"=>"X","Ъ"=>"", 
 			"Ф"=>"F","Ы"=>"I","В"=>"V","А"=>"A","П"=>"P","Р"=>"R", 
 			"О"=>"O","Л"=>"L","Д"=>"D","Ж"=>"ZH","Э"=>"IE","Ё"=>"E", 
 			"Я"=>"YA","Ч"=>"CH","С"=>"C","М"=>"M","И"=>"I","Т"=>"T", 
-			"Ь"=>"\'","Б"=>"B","Ю"=>"YU", 
+			"Ь"=>"","Б"=>"B","Ю"=>"YU", 
 		); 
 		
 		foreach($replacement as $i=>$u) { 
@@ -1337,8 +1454,8 @@ class DBHelper {
 	public static function test ( $import_data ) {
 		
 		$raw_products = $import_data ['data'] -> getAll (  );
-		echo $raw_products [34] . "<br/>";
-		$product = new Product ( $raw_products [34], $import_data ['meta'] );
+		echo $raw_products [1] . "<br/>";
+		$product = new Product ( $raw_products [1], $import_data ['meta'] );
 		$product_id = self::getProductId ( $product -> identifier (  ) );
 		if ( ! $product_id ) {
 			$product_id = 1;
@@ -1354,7 +1471,7 @@ class DBHelper {
 		
 		// self::testCreateAndUpdateProductLocalization ( $product, $product_id );
 		
-		// self::testLP ( $product, $product_id );
+		self::testLP ( $product, $product_id );
 		
 		//} catch ( RuntimeException $ee ) {
 		//	echo "sql error: {$ee -> getMessage (  )} <br/>";
@@ -1363,7 +1480,7 @@ class DBHelper {
 		
 		// self::testVariant ( $product, $product_id );
 		
-		self::testMulti ( 2 );
+		// self::testMulti ( 2 );
 		
 		} catch ( Exception $e ) {
 			echo $e -> getMessage (  ) . "<br/>";
@@ -1405,10 +1522,17 @@ class DBHelper {
 	}
 	
 	public static function testCreateAndUpdateProductLocalization ( $product, $product_id ) {
-		if ( ! self::createProductLocalization ( $product_id, $product, self::$config ['default-locale'] ) ) {
+		$parent_id = 0;
+		if ( $parent_id === 0 ) {
+			$product_localization = self::createProductLocalizationObject ( $product_id, $product );
+		} else {
+			$product_localization = self::createChildProductLocalizationObject ( $product_id, $product );
+		}
+		
+		if ( ! self::createProductLocalization ( $product_localization, self::$config ['default-locale'] ) ) {
 			throw new Exception ( 'Couldn`t create product localization. Sku: ' . $product -> getDebugInfo (  ) );
 		}
-		if ( ! self::updateProductLocalization ( 122, $product, self::$config ['default-locale'] ) ) {
+		if ( ! self::updateProductLocalization ( $product_localization, self::$config ['default-locale'] ) ) {
 			throw new Exception ( 'Couldn`t update product localization. Sku: ' . $product -> getDebugInfo (  ) );
 		}
 	}
@@ -1421,34 +1545,23 @@ class DBHelper {
 		echo "<br/>";
 		
 		echo "Table: lp identifier<br/>";
-		foreach ( $lp_list as $lp ) {
-			echo $lp -> identifier (  ) .": ". implode ( " == ", $lp -> values (  ) );
-			echo "<br/>";
 		
-			$lp_id = self::getLocalizedPropertyId ( $lp -> identifier (  ) );
-			if ( ! $lp_id ) {
-				$lp_id = self::createLocalizedProperty ( $lp -> identifier (  ) );	//$lang
-				if ( ! $lp_id ) {
-					throw new Exception ( "Couldn`t create localized property: {$lp -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
-				}
-				
-			}
-			echo "DB: LP id: $lp_id <br/>";
+		self::process_localized_properties ( $product, $product_id );
 		
-			// foreach ( $lp -> values (  ) as $value ) {
-				// // self::addProductLPValue ( $product_id, $lp_id, self::$config ['default-locale'], $value );
-			// }
-			
-			// echo "DB: Get product lp values<br/>";
-			$current_lp_values = self::unsophisticate_assoc ( self::getProductLPValues ( $product_id, $lp_id, self::$config ['default-locale'] ), 'ccf_value' );
-			// print_r ( $current_lp_values );
-			// echo "<br/>";
-			
-			foreach ( $current_lp_values as $key => $v ) {
-				self::removeProductLPValue ( $key );
-			}
+		/*
+		$imported_lcf_id = self::getLocalizedPropertyId ( $property_name );
 		
-		}
+		$imported_lcf_id = self::createLocalizedProperty ( $property_name );
+		
+		self::createLPLocalization ( $imported_lcf_id, $imported_lcf -> identifier (  ) ,$config ['default-locale'] );	//boolean
+		
+		self::getProductLPValues ( $product_id, $imported_lcf_id, self::$config ['default-locale'] );
+		
+		self::addProductLPValue ( $product_id, $imported_lcf_id, self::$config ['default-locale'], $value );	//boolean
+		
+		self::removeProductLPValue ( $key );
+		*/
+		
 		echo "<br/>";
 	}
 
@@ -1607,7 +1720,7 @@ class Product {
 				if ( empty ( $value ) ) {
 					continue;
 				}
-				$this -> localized_properties [] = new LocalizedProperty ( $k, $this -> data -> get ( $k ) );
+				$this -> localized_properties [] = new Property ( $k, $this -> data -> get ( $k ) );
 			} else if ( $m ['type'] == -1 ) {
 				$this -> variant_properties [$k] = $p -> get ( $k );
 			}
@@ -1724,7 +1837,7 @@ class Property {
 		return $this -> identifier;
 	}
 	
-	public function value (  ) {
+	public function values (  ) {
 		return $this -> value;
 	}
 	
@@ -1771,34 +1884,4 @@ class Image {
 	}
 }
 
-class LocalizedProperty {
-	
-	public function __construct ( $identifier, $value ) {
-		
-		$this -> identifier = $identifier;
-		
-		$this -> value = explode ( ',', $value );
-		array_walk (
-			$this -> value,
-			function ( & $v, $key ) {
-				$v = trim ( $v );
-			}
-		);
-	}
-	
-	protected $identifier;
-	protected $value;
-	
-	public function identifier (  ) {
-		return $this -> identifier;
-	}
-	
-	public function values (  ) {
-		return $this -> value;
-	}
-	
-	public function getDebugInfo (  ) {
-		return $this -> identifier (  );
-	}
-}
 

@@ -1,1 +1,1 @@
-<?php die("Access Denied"); ?>#x#O:8:"stdClass":2:{s:5:"route";s:26:"одяг/для_жінок";s:6:"Itemid";s:3:"120";}
+<?php die("Access Denied"); ?>#x#O:8:"stdClass":2:{s:5:"route";s:37:"одяг/для_жінок/сукні";s:6:"Itemid";s:3:"120";}

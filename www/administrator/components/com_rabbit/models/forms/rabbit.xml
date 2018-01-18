@@ -30,6 +30,8 @@
 					<option value="2">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_CLOTHES</option>
 					<option value="3">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_FABRICS</option>
 					<option value="4">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_TEXTILE</option>
+					<option value="101">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_TEST1</option>
+					<option value="102">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_TEST2</option>
 					<option value="255">COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_USERS</option>
 		</field>
 		<field

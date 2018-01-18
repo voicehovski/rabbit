@@ -108,25 +108,40 @@ class CsvMetadata {
 
 	// @NOTE: все конфигурационные данные можно вынести в отдельный файл, но использовать их не где и как попало, а в определенных местах типа такого. То есть использовать такие данные через строго определенный интерфейс
 
-	/*
+	/*		Метаданные таблиц импорта (МТИ)
+	
 		error_status	уровень "серьезности" ошибки (несовпадения поля таблицы с шаблоном): 2 - критичная, 1 - можно пропустить
 		type	способ хранения поля в базе: 0 - стандартные свойства, 1 - пользовательские свойства, 2 - локализуемые пользовательские свойства
 	*/
 	static $PRODUCT_CSV_META_TEMPLATE = array (
 		
-		'code' => array ( 'index' => -1, 'name' => "(код)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
-		'color' => array ( 'index' => -1, 'name' => "(цвет)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
-		'size' => array ( 'index' => -1, 'name' => "(размер)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
+		'(code)' => array ( 'index' => -1, 'name' => "(код)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
+		'(color)' => array ( 'index' => -1, 'name' => "(цвет)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
+		'(size)' => array ( 'index' => -1, 'name' => "(размер)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
 		
 		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
 		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
-		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.+$", 'error_status' => 1, 'type' => 0 ),
+		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
 		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2, 'type' => 0 ),
 		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
 		
 	);
+	
+	static $PRODUCT_CSV_META_TEMPLATE_UA = array (
+		
+		'(code)' => array ( 'index' => -1, 'name' => "(код)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
+		'(color)' => array ( 'index' => -1, 'name' => "(колір)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
+		'(size)' => array ( 'index' => -1, 'name' => "(розмір)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
+		
+		'name' => array ( 'index' => -1, 'name' => "Назва", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'category' => array ( 'index' => -1, 'name' => "Категорія", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'desc' => array ( 'index' => -1, 'name' => "Опис", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
+		'price' => array ( 'index' => -1, 'name' => "Ціна", 'pattern' => '^\d*$', 'error_status' => 2, 'type' => 0 ),
+		'images' => array ( 'index' => -1, 'name' => "Зображення", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
+		
+	);
 
-	public static function createClothesMetadata ( $headers ) {		
+	public static function createOldClothesMetadata ( $headers ) {
 		
 		$CLOTHES_CSV_META_TEMPLATE = array_merge (
 			self::$PRODUCT_CSV_META_TEMPLATE,
@@ -142,6 +157,81 @@ class CsvMetadata {
 		);
 		
 		return new CsvMetadata ( $CLOTHES_CSV_META_TEMPLATE, $headers );
+	}
+	
+	public static function createClothesMetadata ( $headers ) {
+		
+		$CLOTHES_CSV_META_TEMPLATE = array_merge (
+			self::$PRODUCT_CSV_META_TEMPLATE_UA,
+			array (
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2, 'type' => 0 ),
+				
+				'group' => array ( 'index' => -1, 'name' => "Група", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'collection' => array ( 'index' => -1, 'name' => "Колекція", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				
+				'style' => array ( 'index' => -1, 'name' => "Стиль", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'decor' => array ( 'index' => -1, 'name' => "Елементи обробки та декору", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'siluet' => array ( 'index' => -1, 'name' => "Силует", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'length' => array ( 'index' => -1, 'name' => "Довжина", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'sleeve' => array ( 'index' => -1, 'name' => "Рукав", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'consist' => array ( 'index' => -1, 'name' => "Матеріал", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				//'size' => array ( 'index' => -1, 'name' => "Розмір", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				//'color' => array ( 'index' => -1, 'name' => "Колір", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				
+				'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1, 'type' => 0 )
+			)
+		);
+		
+		return new CsvMetadata ( $CLOTHES_CSV_META_TEMPLATE, $headers );
+	}
+	
+	public static function createTest1Metadata ( $headers ) {
+		
+		$TEST_CSV_META_TEMPLATE = array_merge (
+			self::$PRODUCT_CSV_META_TEMPLATE,
+			array (
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^\w\w\w-\d{4}-\d{2,5}$", 'error_status' => 2, 'type' => 0 ),
+			
+				'text_test' => array ( 'index' => -1, 'name' => "текст", 'pattern' => "^.+$", 'error_status' => 1, 'type' => 1 ),
+				'boolean_test' => array ( 'index' => -1, 'name' => "флаг", 'pattern' => "^1|0$", 'error_status' => 1, 'type' => 1 ),
+				
+				'ext_code' => array ( 'index' => -1, 'name' => "+Код", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
+				'ext_color' => array ( 'index' => -1, 'name' => "+Цвет", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
+				'ext_size' => array ( 'index' => -1, 'name' => "+Размер", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
+				
+				'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1, 'type' => 0 )
+			)
+		);
+		
+		return new CsvMetadata ( $TEST_CSV_META_TEMPLATE, $headers, function ( $normalizedAssocRow ) {
+			return array (
+				'(code)' => $normalizedAssocRow ['ext_code'],
+				'(size)' => $normalizedAssocRow ['ext_size'],
+				'(color)' => $normalizedAssocRow ['ext_color']
+			);
+		} );
+	}
+	
+	// Для тестовой демонстрации. Урезанная таблица одежда 2017
+	public static function createTest2Metadata ( $headers ) {
+		//Артикул;Название;Категория;Описание;Состав;Цена;Изображение;Основной цвет;Коллекция;Группа;Тема
+		$TEST_CSV_META_TEMPLATE = array_merge (
+			self::$PRODUCT_CSV_META_TEMPLATE,
+			array (
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^\d+/\d+/.+$", 'error_status' => 2, 'type' => 0 ),
+			
+				'consist' => array ( 'index' => -1, 'name' => "Состав", 'pattern' => "^.+$", 'error_status' => 1, 'type' => 2 ),
+				
+				'group' => array ( 'index' => -1, 'name' => "Группа", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'collection' => array ( 'index' => -1, 'name' => "Колекция", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				
+				'main' => array ( 'index' => -1, 'name' => "Основной цвет", 'pattern' => ".*", 'error_status' => 1, 'type' => 0 )
+			)
+		);
+		
+		return new CsvMetadata ( $TEST_CSV_META_TEMPLATE, $headers );
 	}
 	
 	public static function createFabricsMetadata ( $headers ) {
@@ -219,7 +309,7 @@ class CsvMetadata {
 					throw new Exception ( 'Sku parsing error' . " [$property]" );
 				}
 				
-				return array ( 'code' => $parts [0], 'size' => $parts [1], 'color' => $parts [2] );
+				return array ( '(code)' => $parts [0], '(size)' => $parts [1], '(color)' => $parts [2] );
 			};
 		}
 	}
@@ -307,7 +397,7 @@ class CsvMetadata {
 		
 		$errors = array (  );
 		
-		$codeGroups = $productGroup -> groupBy ( 'code' );
+		$codeGroups = $productGroup -> groupBy ( '(code)' );
 		foreach ( $codeGroups as $code => $group ) {
 
 			$mainProducts = $group -> where (

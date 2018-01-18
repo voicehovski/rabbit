@@ -927,3 +927,30 @@ mDiRx03YdlM\ Use this link to the &lt;a href='http://ukrlinen.om/administrator/i
 2018-01-06 11:43:03 ERROR vmError: Couldnt create thumb, file not found Z:\home\ukrlinen.om\www\images\virtuemart\product\0703-443.jpg
 2018-01-06 11:43:03 ERROR vmError: File not found Z:\home\ukrlinen.om\www/images/virtuemart/product/0703-418.JPG
 2018-01-06 11:43:03 ERROR vmError: Couldnt create thumb, file not found Z:\home\ukrlinen.om\www\images\virtuemart\product\0703-418.jpg
+2018-01-08 14:23:09 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:23:09 MESSAGE customfield.php: case P, property 238 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:23:09 MESSAGE customfield.php: case P, property 198001 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:06 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:20 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:20 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:46 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:46 MESSAGE customfield.php: case P, property 238 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:46 MESSAGE customfield.php: case P, property 198001 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:46 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:46 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:46 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-08 14:25:49 MESSAGE customfield.php: case P, property 238 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:26:33 MESSAGE customfield.php: case P, property 238 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:26:33 MESSAGE customfield.php: case P, property 238 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:27:09 MESSAGE customfield.php: case P, property 238 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:27:09 MESSAGE customfield.php: case P, property 72 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:27:11 MESSAGE customfield.php: case P, property 238 does not exists. virtuemart_custom_id: 6
+2018-01-08 14:27:11 MESSAGE customfield.php: case P, property  does not exists. virtuemart_custom_id: 6
+2018-01-09 09:26:26 ERROR vmError: File not found Z:\home\ukrlinen.om\www/images/virtuemart/product/9773-101.JPG
+2018-01-09 09:26:26 ERROR vmError: Couldnt create thumb, file not found Z:\home\ukrlinen.om\www\images\virtuemart\product\9773-101.jpg
+2018-01-15 07:13:12 ERROR vmError: File not found Z:\home\ukrlinen.om\www/images/virtuemart/product/9773-101.JPG
+2018-01-15 07:13:12 ERROR vmError: Couldnt create thumb, file not found Z:\home\ukrlinen.om\www\images\virtuemart\product\9773-101.jpg
+2018-01-15 07:41:30 ERROR vmError: File not found Z:\home\ukrlinen.om\www/images/virtuemart/product/9773-101.JPG
+2018-01-15 07:41:30 ERROR vmError: Couldnt create thumb, file not found Z:\home\ukrlinen.om\www\images\virtuemart\product\9773-101.jpg
+2018-01-18 11:23:16 ERROR vmError: File not found Z:\home\ukrlinen.om\www/images/virtuemart/product/9773-101.JPG
+2018-01-18 11:23:16 ERROR vmError: Couldnt create thumb, file not found Z:\home\ukrlinen.om\www\images\virtuemart\product\9773-101.jpg

@@ -13,11 +13,14 @@ defined('_JEXEC') or die('Restricted access');
 class RabbitViewCheck extends JViewLegacy
 {
 	// @PROBLEM: Эти константы нужно синхронизировать по значениям с xml-описателем формы
+	// Отвечают за тип таблицы импота (одежда, ткани, домашний текстиль...)
 	const UNKNOWN_CONTENT_TYPE = '0';
 	const AUTO_CONTENT_TYPE = '1';
 	const CLOTHES_CONTENT_TYPE = '2';
 	const FABRICS_CONTENT_TYPE = '3';
 	const TEXTILE_CONTENT_TYPE = '4';
+	const TEST1_CONTENT_TYPE = '101';
+	const TEST2_CONTENT_TYPE = '102';
 	
 	const UNKNOWN_PRODUCT_VARIANT_DEF = '0';
 	const DEFAULT_PRODUCT_VARIANT_DEF = '255';
@@ -153,6 +156,12 @@ class RabbitViewCheck extends JViewLegacy
 					case self::TEXTILE_CONTENT_TYPE:
 						$csvMeta = CsvMetadata::createTextileMetadata ( $csv -> headers (  ) );
 						break;
+					case self::TEST1_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createTest1Metadata ( $csv -> headers (  ) );
+						break;
+					case self::TEST2_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createTest2Metadata ( $csv -> headers (  ) );
+						break;
 					default:
 						throw new Exception ( "Unknown production type: " . $content_type );
 				}
@@ -242,6 +251,7 @@ class RabbitViewCheck extends JViewLegacy
 			case 0:
 				// @QUESTION: Нужно ли сохранять в сессию?
 				RabbitHelper::save_variable ( 'import_data', $this -> importData );
+				$testImportData = RabbitHelper::restore_variable ( 'import_data' );
 				break;
 			default:
 				JError::raiseError ( 500, "Unknown import check_status: " . $this -> check_status );
@@ -334,7 +344,7 @@ class RabbitViewCheck extends JViewLegacy
 						throw new Exception ( 'Sku parsing error' . " [$property]" );
 					}
 					
-					return array ( 'code' => $parts [0], 'size' => $parts [1], 'color' => $parts [2] );					
+					return array ( '(code)' => $parts [0], '(size)' => $parts [1], '(color)' => $parts [2] );					
 				};
 				break;
 				
