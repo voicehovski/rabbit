@@ -21,6 +21,9 @@ class RabbitViewCheck extends JViewLegacy
 	const TEXTILE_CONTENT_TYPE = '4';
 	const TEST1_CONTENT_TYPE = '101';
 	const TEST2_CONTENT_TYPE = '102';
+	const SALES_CONTENT_TYPE = '253';
+	const ORDERS_CONTENT_TYPE = '254';
+	const USERS_CONTENT_TYPE = '255';
 	
 	const UNKNOWN_PRODUCT_VARIANT_DEF = '0';
 	const DEFAULT_PRODUCT_VARIANT_DEF = '255';
@@ -141,6 +144,7 @@ class RabbitViewCheck extends JViewLegacy
 				
 				// @TODO: Пользователей и заказы, видимо лучше импортировать в другом виде
 				// @TODO: Идентификаторы типов продукции хранить в одном месте - xml-описателе или базе данных, но не константами которые нужно синхронизировать с xml
+				// @QUESTION: Какими способами можно связать то что будет выведено в форме с функциями которые будут это обрабатывать? Одноименные константы, указать функции в описателе. Как еще? Какие преимущества и недостатки?
 				// Теперь можно создавать ассоциативные формы строк csv и обращаться к данным в них по заданным кодам, а не по исходным индексам
 				if ( $content_type == self::AUTO_CONTENT_TYPE ) {
 					$content_type = self::fetchProductionType ( $csv );
@@ -161,6 +165,10 @@ class RabbitViewCheck extends JViewLegacy
 						break;
 					case self::TEST2_CONTENT_TYPE:
 						$csvMeta = CsvMetadata::createTest2Metadata ( $csv -> headers (  ) );
+						break;
+					case self::SALES_CONTENT_TYPE:
+					case self::ORDERS_CONTENT_TYPE:
+					case self::USERS_CONTENT_TYPE:
 						break;
 					default:
 						throw new Exception ( "Unknown production type: " . $content_type );
@@ -251,7 +259,7 @@ class RabbitViewCheck extends JViewLegacy
 			case 0:
 				// @QUESTION: Нужно ли сохранять в сессию?
 				RabbitHelper::save_variable ( 'import_data', $this -> importData );
-				$testImportData = RabbitHelper::restore_variable ( 'import_data' );
+				//$testImportData = RabbitHelper::restore_variable ( 'import_data' ); Для отладки - слишком большие данные не сохраняются в сессии
 				break;
 			default:
 				JError::raiseError ( 500, "Unknown import check_status: " . $this -> check_status );

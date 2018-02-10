@@ -29,7 +29,7 @@ if(vRequest::getInt('dynamic')){
 			vmdebug('Refallback');
 		}
 
-		echo shopFunctionsF::renderVmSubLayout($this->productsLayout,array('products'=>$this->products,'currency'=>$this->currency,'products_per_row'=>$this->perRow,'showRating'=>$this->showRating));
+		echo shopFunctionsF::renderVmSubLayout($this->productsLayout,array('products'=>$this->products,'currency'=>$this->currency,'products_per_row'=>$this->perRow,'showRating'=>$this->showRating, 'additional_icons' => $this -> additional_icons));
 
 	}
 
@@ -149,7 +149,7 @@ if(!empty($this->orderByList)) { ?>
 			vmdebug('Refallback');
 		}
 
-	echo shopFunctionsF::renderVmSubLayout($this->productsLayout,array('products'=>$this->products,'currency'=>$this->currency,'products_per_row'=>$this->perRow,'showRating'=>$this->showRating));
+	echo shopFunctionsF::renderVmSubLayout($this->productsLayout,array('products'=>$this->products,'currency'=>$this->currency,'products_per_row'=>$this->perRow,'showRating'=>$this->showRating, 'additional_icons' => $this -> additional_icons));
 
 	if(!empty($this->orderByList)) { ?>
 		<div class="vm-pagination vm-pagination-bottom"><?php echo $this->vmPagination->getPagesLinks (); ?><span class="vm-page-counter"><?php echo $this->vmPagination->getPagesCounter (); ?></span></div>

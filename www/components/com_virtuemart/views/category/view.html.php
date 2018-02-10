@@ -22,6 +22,8 @@ defined('_JEXEC') or die('Restricted access');
 // Load the view framework
 if(!class_exists('VmView'))require(VMPATH_SITE.DS.'helpers'.DS.'vmview.php');
 
+require_once JPATH_ROOT . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . 'mod_rabbitfilter' . DIRECTORY_SEPARATOR . 'helper.php';
+require_once JPATH_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_rabbit' . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'dbh.php';
 /**
 * Handle the category view
 *
@@ -253,7 +255,44 @@ class VirtuemartViewCategory extends VmView {
 				if(!$this->keyword) VirtueMartModelProduct::$omitLoaded = VmConfig::get('omitLoaded');
 				// Load the products in the given category
 				$ids = $productModel->sortSearchListQuery (TRUE, $this->categoryId);
-				$this->vmPagination = $productModel->getPagination($this->perRow);
+
+				//  Filtering modification ulns.система_фильтрации
+				// =================================================
+                $filter_params = modRabbitFilterHelper::fetch_filter_options (false );
+                if ( ! empty ( $filter_params ) ) {
+                    $result = modRabbitFilterHelper::filter_lcf (
+                        $filter_params,
+                        "uk_ua"
+                    );
+                    $ids = array_intersect($ids, $result);
+                }
+                $lcf_value_list = modRabbitFilterHelper::get_lcf_values_for  ( $ids );
+                //===================================================
+                
+				//	Additional icons
+				//===================================================
+				$additional_icons_lcf_id = DBHelper::getLocalizedPropertyId ( DBHelper::$config ['product-additional-icons-lcf-name'] );
+				$lcf_value_list = DBHelper::get_lcf_values ( 0, $additional_icons_lcf_id, '*' );
+				
+				$this -> additional_icons = array (  );
+				
+				foreach ( $lcf_value_list as $lcf_value ) {
+					
+					$color_variant_list = explode ( ';', $lcf_value [LCF_VALUE_FIELD_NAME] );
+					foreach ( $color_variant_list as $color_variant ) {
+						list ( $child_id, $image_id, $sizes ) = explode ( ':', $color_variant );
+					
+						if ( isset ( $image_id ) ) {
+							$image_thumb = DBHelper::create_image_thumb_path ( $image_id );
+							$this -> additional_icons [$lcf_value [LCF_VALUE_PRODUCT_ID_FIELD_NAME]][] = array ( $child_id, $image_thumb, $sizes );
+						}
+					}
+				}
+				//===================================================
+				
+
+
+                $this->vmPagination = $productModel->getPagination($this->perRow);
 				$this->orderByList = $productModel->getOrderByList($this->categoryId);
 				$this->products['products'] = $productModel->getProducts ($ids);
 				$productModel->addImages($this->products['products'], $imgAmount );
@@ -652,6 +691,7 @@ INNER JOIN #__virtuemart_product_categories as cat ON (pc.virtuemart_product_id=
 
 		return;
 	}
+
 }
 
 

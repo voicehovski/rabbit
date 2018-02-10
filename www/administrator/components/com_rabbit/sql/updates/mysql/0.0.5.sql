@@ -20,7 +20,6 @@ CREATE TABLE `#__localized_custom_fields` (
 	`lcf_id`       INT(11)     NOT NULL AUTO_INCREMENT,
 	`lcf_name` VARCHAR(128),
 	`parent_only` BOOLEAN,
-	`field_type` CHAR(1),
 	`ordering` TINYINT(4) UNSIGNED DEFAULT 0,
 	PRIMARY KEY (`lcf_id`)
 )

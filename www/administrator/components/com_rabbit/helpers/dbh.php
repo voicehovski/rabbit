@@ -6,6 +6,7 @@ defined('_JEXEC') or die('Restricted access');
 	define ( 'LCF_ID_FIELD_NAME', 'lcf_id' );
 	define ( 'LCF_NAME_FIELD_NAME', 'lcf_name' );
 	define ( 'LCF_PARENT_ONLY_FIELD_NAME', 'parent_only' );
+	define ( 'LCF_FIELD_TYPE_FIELD_NAME', 'field_type' );
 	
 	define ( 'LCF_VALUE_TABLE_NAME', '#__localized_custom_field_values' );
 	define ( 'LCF_VALUE_ID_FIELD_NAME', 'lcf_value_id' );
@@ -15,6 +16,7 @@ defined('_JEXEC') or die('Restricted access');
 	define ( 'LCF_VALUE_LANG_FIELD_NAME', 'lang' );
 	define ( 'LCF_VALUE_FIELD_NAME', 'lcf_value' );	//Использовано не только лишь здесь. Еще в process_localized_properties, но коряво
 	define ( 'LCF_VALUE_IMAGE_FIELD_NAME', 'image_file' );
+	define ( 'LCF_VALUE_CODE_FIELD_NAME', 'lcf_value_code' );
 	
 	define ( 'LCF_TO_CATEGORY_TABLE_NAME', '#__lcf_to_category' );
 	define ( 'LCF_TO_CATEGORY_LCF_ID_FIELD_NAME', 'lcf_id' );
@@ -24,7 +26,7 @@ defined('_JEXEC') or die('Restricted access');
 class DBHelper {
 	
 	//@TODO: Сделать преффиксы посложнее - на случай нестандартных размеров/цветов
-	static $config = array (
+	public static $config = array (
 		'localized-slug' => true,
 		'default-locale' => 'uk_ua',
 		'default-charset' => 'UTF-8',
@@ -35,6 +37,8 @@ class DBHelper {
 		'multiproduct-cf-paramcf-name' => 'CF-1',
 		'multiproduct-cf-paramcf-value_color' => 'CF_COLOR',
 		'multiproduct-cf-paramcf-value_size' => 'CF_SIZE',
+		
+		'product-additional-icons-lcf-name' => 'PROPERTY_NAME_PRODUCT_ADDITIONAL_ICONS',
 		
 		'size-cfvalue-preffix' => 's_',
 		'color-cfvalue-preffix' => 'c_'
@@ -107,24 +111,49 @@ class DBHelper {
 			$main_product = new Product ( $main_product_raw, $import_data ['meta'] );
 			$main_product -> identifier (  $main_product_raw -> get ( '(code)' ) );
 			$main_product_id = self::process_product ( $main_product );
+			self::process_prices ( $main_product, $main_product_id );
 			self::process_images ( $main_product, $main_product_id );
-			self::process_multiproduct_cf_params ( $main_product_id );
+			//self::process_multiproduct_cf_params ( $main_product_id );
 			self::process_properties ( $main_product, $main_product_id );
 			self::process_localized_properties ( $main_product, $main_product_id );
 			self::process_categories ( $main_product, $main_product_id );
 			
 			// Создаём / обновляем дочерние товары, изображения (существующие только подвязываем к товару, не пересоздаём), КФ и ККФ (определяющие варианты КФ берем из конфигурации). Категории не нужны
 			// Все товары, включая одно-цветно-размерные будут иметь дочерние: условный основной и реальные дочерние
+			$images_n_sizes = array (  );
 			foreach ( $product_group -> getAll (  ) as $product_variant_raw ) {
 				$product_variant = new Product ( $product_variant_raw, $import_data ['meta'] );
 				$product_variant_id = self::process_product ( $product_variant, $main_product_id );
 				self::process_images ( $product_variant, $product_variant_id );
+
+				// @PROBLEM: Слишком громоздко - каждый раз запрашивать ИД изображения у базы. Результат тоже получается корявый - с повторениями. и коряво вычислять минимальный размер. И контроль публикованности нужен. Вобщем, нужно что-то делать, а также с функцией create_product_additional_icons
+				//[color_code=>[[size_code, image_id, product_id]]]
+				$image_ids = self::get_main_image_id ( $product_variant_id );
+
+				if ( is_array ( $image_ids ) && $image_ids [0] ) {
+					$import_variant_properties = $product_variant -> variantProperties (  );
+					$images_n_sizes [$import_variant_properties ['(color)']][] = array (
+						$import_variant_properties ['(size)'],
+						$image_ids [0],
+						$product_variant_id
+					);
+				}
+				
 				// self::process_properties ( $product_variant, $product_variant_id );
 				self::process_specific_product_variant_cf_values ( $product_variant, $product_variant_id );
 			}
 			
+			self::create_product_additional_icons ( $main_product_id, $images_n_sizes );
+			/*foreach ( $product_group -> groupBy ( "(color)" ) as $color_group ) {
+				
+				foreach ( $color_group -> getAll (  ) as $p ) {
+					
+				}
+			}*/
+			
 			// Делаем дочерние продукты, созданные выше, мультипродуктами основного, а именно модифицируем поле customfield_params таблицы virtuemart_product_customfields. Значения берем из базы - так намного проще чем сохранять в коде
-			self::process_main_product_variants ( $main_product, $main_product_id );
+			// self::process_main_product_variants ( $main_product, $main_product_id );
+			self::process_multiproduct_cf_values ( $main_product_id );
 			
 		}
 		
@@ -198,11 +227,90 @@ class DBHelper {
 		return $product_id;
 	}
 
+	/*		Импорт основной цены продукта
+	
+		Предполагается что цена указана в гривнах
+	*/
+	protected static function process_prices ( $product, $product_id ) {
+		
+		$price = $product -> price (  );
+		
+		if ( empty ( $price ) ) {
+			
+			return;
+		}
+		
+		/*if (  ) {
+			
+			// Validate price
+		}*/
+		
+		// @TODO: Get currency id. See KW "virtuemart get main currency", for example https://stackoverflow.com/questions/33545625/how-to-get-virtuemart-store-default-currency-details-in-components
+		$main_currency_id = 199;
+		
+		// @TODO: Get out user getting from here to start of script
+		$user =& JFactory::getUser (  );
+		
+		$s = new stdClass (  );
+		$s -> column_name = 'virtuemart_product_price_id';
+		$s -> table_name = '#__virtuemart_product_prices';
+		$s -> condition_column = 'virtuemart_product_id';
+		
+		$price_id = self::get_id_ ( $product_id, $s );
+		
+		if ( $price_id === null ) {
+			throw new Exception ( "Warning! While price checking for procuct id = $product_id" );
+		}
+		
+		// No price for such product
+		if ( empty ( $price_id ) ) {
+			// add price
+			$price_id = self::create_ (
+				array ( 'virtuemart_product_id', 'product_price', 'override', 'product_override_price', 'product_tax_id', 'product_discount_id', 'product_currency', 'created_on', 'created_by' ),
+				array ( $product_id, $price, 0, 0, 0, 0, $main_currency_id, JFactory::getDate (  ) -> toSql (  ), $user -> get ( 'id' ) ),
+				"#__virtuemart_product_prices"
+			);
+			return;
+		} else if ( count ( $price_id ) > 1 ) {
+			// @TODO: Check prices and update relevant
+			throw new Exception ( "Warning! Several prices for procuct id = $product_id" );
+		} else {
+			//update price
+					
+			$db = JFactory::getDbo (  );
+			$query = $db -> getQuery ( true );
+			
+			$fields = array (
+				//$db -> quoteName ( 'virtuemart_product_id' ) . ' = ' . $db -> quote ( $product_id ),
+				$db -> quoteName ( 'product_price' ) . ' = ' . $db -> quote ( $price ),
+				
+				//$db -> quoteName ( 'override' ) . ' = ' . '0',
+				//$db -> quoteName ( 'product_override_price' ) . ' = ' . '0',
+				//$db -> quoteName ( 'product_tax_id' ) . ' = ' . 'product_tax_id',
+				//$db -> quoteName ( 'product_discount_id' ) . ' = ' . '0',
+				
+				//$db -> quoteName ( 'product_currency' ) . ' = ' . $db -> quote ( $main_currency_id ),
+				$db -> quoteName ( 'modified_on' ) . ' = ' . $db -> quote ( JFactory::getDate (  ) -> toSql (  ) ),
+				$db -> quoteName ( 'modified_by' ) . ' = ' . $db -> quote ( $user -> get ( 'id' ) )
+			);
+			
+			$conditions = array (
+				$db -> quoteName ( 'virtuemart_product_price_id' ) . " = {$price_id[0]}"
+			);
+			
+			$query -> update ( $db -> quoteName ( '#__virtuemart_product_prices' ) ) -> set ( $fields ) -> where ( $conditions );
+
+			$db -> setQuery ( $query );
+
+			return $db -> execute (  );
+		}
+	}
+	
 	/*		Импорт изображений
 	
 		Миниатюры волшебным образом создаются автоматически в подкаталоге resized. Но в таблицу автоматически не заносятся, а я тоже пока не заношу
 	*/
-	//@LIGHT-TESTED 14:55 06.12.2018
+	//@LIGHT-TESTED 14:55 06.12.2017
 	protected static function process_images ( $product, $product_id ) {
 		
 		$current_image_id_list = self::getProductImages ( $product_id );
@@ -239,6 +347,69 @@ class DBHelper {
 			}
 		}
 		
+	}
+	
+	/*		Извлекает из ТБД изображение продукта с наивысшим порядоком или первое по id. Считаем такое изображение главным
+	
+	*/
+	//@LIGHT-TESTED 13:00 09.02.2018
+	protected static function get_main_image_id ( $product_id ) {
+		
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+
+		$query -> select ( $db -> quoteName ( 'virtuemart_media_id' ) );
+		$query -> from ( $db -> quoteName ( '#__virtuemart_product_medias' ) );
+		$query -> where ( $db -> quoteName ( 'virtuemart_product_id' ) . ' = ' . $product_id );
+		$query -> order ( $db -> quoteName ( 'ordering' ) ) -> order ( $db -> quoteName ( 'virtuemart_media_id' ) );
+
+		$db -> setQuery ( $query );
+		return $db -> loadColumn (  );	
+	}
+
+	/*		Создаёт ЛКФ для иконок цветовой гаммы
+	
+		@PROBLEMS: Нет проверки результатов и аргументов
+	*/
+	//@NEED_TEST
+	protected static function create_product_additional_icons ( $product_id, $variants ) {
+		
+		$property_name = self::$config ['product-additional-icons-lcf-name'];
+		$lcf_id = self::getLocalizedPropertyId ( $property_name );
+		
+		if ( ! $lcf_id ) {
+			$lcf_id = self::createLocalizedProperty (
+				$property_name,
+				array ( LCF_PARENT_ONLY_FIELD_NAME => '1', LCF_FIELD_TYPE_FIELD_NAME => 'i' )
+			);
+			if ( ! $lcf_id ) {
+				throw new Exception ( "Could`t create LCF " . self::$config ['product-additional-icons-lcf-name'] );
+			}
+		}
+		
+		$lcf_values = self::getProductLPValues_bis ( $product_id, $lcf_id, '*' );
+		$new_values_array = array (  );
+		foreach ( $variants as $k => $v ) {
+			$image_id = $v [0][1];
+			$child_id = $v [0][2];
+			$new_values_array [] = "$child_id:$image_id:" . implode ( ",", array_column ( $v, 0 ) );
+		}
+		$new_value = implode ( ";", $new_values_array );
+		
+		if ( count ( $lcf_values ) == 1 ) {
+			self::updateProductLCFValue ( $lcf_values [0][LCF_VALUE_ID_FIELD_NAME], $new_value );
+		} else if ( empty ( $lcf_values ) ) {
+			$code = self::fetchLPValueMaxCode (  ) + 1;
+			self::addProductLPValue (
+				$product_id, $lcf_id, '*', $new_value, $code,
+				$field_list = array (
+					LCF_VALUE_PARENT_ID_FIELD_NAME => '0',
+					LCF_VALUE_IMAGE_FIELD_NAME => ''
+				)
+			);
+		} else {
+			throw new Exception ( "Several LCF $lcf_id lcf_values for $product_id" );
+		}
 	}
 	
 	/*		Импорт классических КФ
@@ -338,6 +509,10 @@ class DBHelper {
 		}*/
 	}
 
+	protected static function create_localized_property_name ( $identifier ) {
+		return "PROPERTY_NAME_" . strtoupper ( self::normalizeSlug ( $identifier, true ) );
+	}
+	
 	/*		Импорт локализуемых КФ
 	
 		Это КФ, сохраняемые в отдельных ТБД, пригодные для поиска, фильтрации и импорта
@@ -347,7 +522,7 @@ class DBHelper {
 		
 		foreach ( $product -> localizedProperties (  ) as $imported_lcf ) {
 			
-			$property_name = "PROPERTY_NAME_" . strtoupper ( self::normalizeSlug ( $imported_lcf -> identifier (  ), true ) );
+			$property_name = self::create_localized_property_name ( $imported_lcf -> identifier (  ) );
 			$imported_lcf_id = self::getLocalizedPropertyId ( $property_name );
 			
 			if ( ! $imported_lcf_id ) {
@@ -358,7 +533,7 @@ class DBHelper {
 					throw new Exception ( "Couldn`t create localized property: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 				}
 				// @QUESTION: Делаем локализацию имен свойств здесь? Или потом вручную - их все равно не много и добавляться будут редко?
-				if ( ! self::createLPLocalization ( $imported_lcf_id, $imported_lcf -> identifier (  ) ,$config ['default-locale'] ) ) {
+				if ( ! self::createLPLocalization ( $imported_lcf_id, $imported_lcf -> identifier (  ) ,self::$config ['default-locale'] ) ) {
 					throw new Exception ( "Couldn`t localize localized property: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 				}
 			}
@@ -370,7 +545,12 @@ class DBHelper {
 				if ( $k !== false ) {
 					unset ( $value_list_db [$k] );
 				} else {
-					if ( ! self::addProductLPValue ( $product_id, $imported_lcf_id, self::$config ['default-locale'], $value ) ) {
+					// @NEED_TEST: Проверить что будет в случае одноименных значений разных ЛКФ
+					$code = self::getLPValueCode ( $imported_lcf_id, $value, self::$config ['default-locale'] );
+					if ( empty ( $code ) ) {
+						$code = self::fetchLPValueMaxCode (  ) + 1;
+					}
+					if ( ! self::addProductLPValue ( $product_id, $imported_lcf_id, self::$config ['default-locale'], $value, $code ) ) {
 						throw new Exception ( "Couldn`t bind localized property value: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
 					}
 				}
@@ -490,7 +670,7 @@ class DBHelper {
 		
 		Важно! В списке дочерних продуктов get_product_varialnt_list должны быть только активные (published) товары.
 	*/
-	//@LIGHT-TESTED 12:55 06.12.2018
+	//@LIGHT-TESTED 12:55 06.12.2017
 	protected static function process_main_product_variants ( $product, $id ) {
 
 		//@TODO: Можно вынести в глобал
@@ -534,7 +714,70 @@ class DBHelper {
 
 		self::update_multicf ( $cf_params_string ['id'], /*$id, */$new_params_string );
 	}
+	
+	/*		Создаёт значения КФ для реализации мультипродуктов
+	
+		Заменяет связку функций process_main_product_variants и process_multiproduct_cf_params
+		
+		@TODO: Удолить вышеобозначенные функции
+	*/
+	//@LIGHT-TESTED 17:00 31.01.2018
+	protected static function process_multiproduct_cf_values ( $product_id ) {
+		
+		$multi_cf_id = self::get_multiproduct_cf_id (  );
+		$multi_param_cf_id = self::get_multiproduct_cf_paramcf_id (  );
+				
+		$c_values = array (  );
+		$s_values = array (  );
+		// Заполняем опции для родительского товара - он у нас без цвета и размера
+		$new_options [ $product_id ] = array ( "0", "0" );
+		// Получаем продукты-варианты, дочерние для $product_id и содержащие КФ $multi_param_cf_id вместе со значениями этих КФ
+		foreach ( self::get_product_varialnt_list ( $product_id, $multi_param_cf_id ) as $child ) {
+			
+			if ( mb_strpos ( $child ['customfield_value'], self::$config ['color-cfvalue-preffix'], 0, self::$config ['default-charset'] ) === 0 ) {
+				$new_options [ $child ['virtuemart_product_id'] ][0] = $child ['customfield_value'];
+				$c_values [] = $child ['customfield_value'];
+			} else if ( mb_strpos ( $child ['customfield_value'], self::$config ['size-cfvalue-preffix'], 0, self::$config ['default-charset'] ) === 0 ) {
+				$new_options [ $child ['virtuemart_product_id'] ][1] = $child ['customfield_value'];
+				$s_values [] = $child ['customfield_value'];
+			} else {
+				// warning: unexpected CF value format
+			}
+		}
+		
+		$p1 = 'selectoptions=[{"voption":"clabels","clabel":"'.self::$config ['multiproduct-cf-paramcf-value_color'].'","values":"'.implode ( '\\r\\n', $c_values ).'"},{"voption":"clabels","clabel":"'.self::$config ['multiproduct-cf-paramcf-value_size'].'","values":"'.implode ( '\\r\\n', $s_values ).'"}]|';
+		
+		$new_params_string =
+			$p1 . "|" .
+			self::serializeMultiCustomParams ( $new_options ) . "|";
+		
+		//Возвращает []=>{virtuemart_customfield_id => id, customfield_params => value}
+		$params_list = self::getProductPropertyFieldValues_bis ( $product_id, $multi_cf_id, $field_name = 'customfield_params' );
+		/* echo "TEST process_multiproduct_cf_values <br/>";
+		print_r ( $params_list );
+		echo "<br/>";
+		echo $new_params_string;
+		return; */
+		
+		if ( empty ( $params_list ) ) {	// @WARNING: А если там  при отсутствии результата не пустой массив...
+			self::addProductPropertyValue ( $product_id, $multi_cf_id, null, array ( 'customfield_params' => $new_params_string, 'customfield_price' => '0' ) );
+		} else if ( count ( $params_list ) == 1 ) {
+			// Only if not match...
+			// @PROBLEM: Так нельзя! Это плохо! virtuemart_customfield_id, уходи!
+			self::updateProductPropertyValue ( $params_list [0]['virtuemart_customfield_id'], array ( 'customfield_params' => $new_params_string ) );
+		} else {
+			throw new Exception ( "More then one multivariant value. Product id: $product_id Property id: $multi_cf_id" );
+		}
+	}
 
+	/*		Возвращает параметры КФ-мультипродукта
+	
+		Возвращает массив из одного элемента вида [0]{virtuemart_customfield_id=>id, pstring=>customfield_params}
+		
+		Если такого значения КФ для указанного продукта нет или их несколько, выбрасывает исключение
+		
+		@DEPRECATED: Функция откровенно хуёвая и подлежит вытеснению. И потому что нужно передавать ИД КФ, который и так указан в названии и потому что возвращает дебелый результат
+	*/
 	function get_multicf_param_string ( $product_id, $cf_id ) {
 
 		$params = self::getProductPropertyFieldValues ( $product_id, $cf_id, 'customfield_params' );
@@ -594,6 +837,11 @@ class DBHelper {
 		return $db -> loadAssocList (  );		
 	}
 
+	/*		Обновляет значение КФ
+	
+		НЕНУЖЕН, заменено более универсальной функцией. Удолить
+	
+	*/
 	function update_multicf ( $customfield_id, /*$product_id,*/ $params_string ) {
 		
 		$user =& JFactory::getUser();
@@ -1110,7 +1358,7 @@ class DBHelper {
 
 		$db -> setQuery ( $query );
 
-		return $db -> execute (  );				
+		return $db -> execute (  );
 	}
 
 	public static function removeProductPropertyValue ( $value_id ) {
@@ -1183,6 +1431,20 @@ class DBHelper {
 		return $result == null ? array (  ) : $result;
 	}
 
+	public static function get_media ( $media_id ) {
+		
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+
+		$query -> select ( '*' );
+		$query -> from ( $db -> quoteName ( '#__virtuemart_medias' ) );
+		$query -> where ( $db -> quoteName ( 'virtuemart_media_id' ) . ' = ' . $media_id );
+
+		$db -> setQuery ( $query );
+		
+		return $db -> loadAssoc (  );
+	}
+	
 	
 	//====================	Localized properties	===========================
 	
@@ -1205,7 +1467,7 @@ class DBHelper {
 	}
 	
 	// @NOTE: Переменная не может быть использована в качестве ключа массива. Константа - может
-	public static function createLocalizedProperty ( $identifier, $field_list = array ( LCF_PARENT_ONLY_FIELD_NAME => '1' ) ) {
+	public static function createLocalizedProperty ( $identifier, $field_list = array ( LCF_PARENT_ONLY_FIELD_NAME => '1', LCF_FIELD_TYPE_FIELD_NAME => 's' ) ) {
 		
 		//Если не создаём новые свойства в скрипте. Правда здесь параметров маловато, но можно словить и перевыбросить
 		//throw new Exception ( "Unknown LCF: {$identifier}" );
@@ -1240,14 +1502,62 @@ class DBHelper {
 		return $db -> loadAssocList ( LCF_VALUE_ID_FIELD_NAME );
 	}
 	
-	public static function addProductLPValue ( $product_id, $lp_id, $locale, $value,
+	/*		Извлекает из ТБД все поля значений ЛКФ по указанным критериям
+	
+	
+	*/
+	//@NEED_TEST
+	public static function getProductLPValues_bis ( $product_id, $lp_id, $locale ) {
+
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+
+		$query -> select ( '*' );
+		$query -> from ( $db -> quoteName ( LCF_VALUE_TABLE_NAME ) );
+		$query -> where ( $db -> quoteName ( LCF_VALUE_PRODUCT_ID_FIELD_NAME ) . ' = ' . $product_id );
+		$query -> where ( $db -> quoteName ( LCF_ID_FIELD_NAME ) . ' = ' . $lp_id );
+		$query -> where ( $db -> quoteName ( LCF_VALUE_LANG_FIELD_NAME ) . ' = ' . $db -> quote ( $locale ) );
+
+		$db -> setQuery ( $query );
+		
+		return $db -> loadAssocList (  );
+	}
+
+	/*		Извлекает из ТБД все поля значений ЛКФ по указанным критериям
+	
+		@NOTE: Используется в виде категории Virtuemart.
+		
+		@TODO: Следует заменить функции типа getProductLPValues_bis и getProductLPValues, этой
+	*/
+	//@NEED_TEST	
+	public static function get_lcf_values ( $product_id, $lcf_id, $locale ) {
+
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+
+		$query -> select ( '*' );
+		$query -> from ( $db -> quoteName ( LCF_VALUE_TABLE_NAME ) );
+		if ( $product_id != 0 ) {
+			$query -> where ( $db -> quoteName ( LCF_VALUE_PRODUCT_ID_FIELD_NAME ) . ' = ' . $product_id );
+		}
+		if ( $lcf_id != 0 ) {
+			$query -> where ( $db -> quoteName ( LCF_ID_FIELD_NAME ) . ' = ' . $lcf_id );
+		}
+		$query -> where ( $db -> quoteName ( LCF_VALUE_LANG_FIELD_NAME ) . ' = ' . $db -> quote ( $locale ) );
+
+		$db -> setQuery ( $query );
+		
+		return $db -> loadAssocList (  );
+	}
+	
+	public static function addProductLPValue ( $product_id, $lp_id, $locale, $value, $code,
 		$field_list = array (
 			LCF_VALUE_PARENT_ID_FIELD_NAME => '0',
-			LCF_VALUE_IMAGE_FIELD_NAME => '',
+			LCF_VALUE_IMAGE_FIELD_NAME => ''
 		)
 	) {
-		$columns = array ( LCF_VALUE_PRODUCT_ID_FIELD_NAME, LCF_ID_FIELD_NAME, LCF_VALUE_LANG_FIELD_NAME, LCF_VALUE_FIELD_NAME ); 
-		$values = array ( $product_id, $lp_id, $locale, $value );
+		$columns = array ( LCF_VALUE_PRODUCT_ID_FIELD_NAME, LCF_ID_FIELD_NAME, LCF_VALUE_LANG_FIELD_NAME, LCF_VALUE_FIELD_NAME, LCF_VALUE_CODE_FIELD_NAME ); 
+		$values = array ( $product_id, $lp_id, $locale, $value, $code );
 
 		if ( is_array ( $field_list ) ) {
 			foreach ( $field_list as $field_name => $value ) {
@@ -1258,6 +1568,39 @@ class DBHelper {
 		
 		return self::create_ ( $columns, $values, LCF_VALUE_TABLE_NAME );
 		
+	}
+	
+	/*		Обновляет значения ЛКФ
+
+		@PROBLEMS: Нет проверки результатов и аргументов
+	*/
+	//@NEED_TEST
+	public static function updateProductLCFValue ( $lcf_value_id, $value, $field_list = array () ) {
+		
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+		$user =& JFactory::getUser();
+		
+		if ( ! is_array ( $field_list ) ) {
+			return;
+		}
+		
+		$fields [] = $db -> quoteName ( LCF_VALUE_FIELD_NAME ) . ' = ' . $db -> quote ( $value );
+		//@PROBLEM: Не все поля нуждаются в кавыченьи
+		foreach ( $field_list as $field_name => $field_value ) {
+			$fields [] = $db -> quoteName ( $field_name ) . ' = ' . $db -> quote ( $field_value );
+		}
+		
+		$conditions = array (
+			$db -> quoteName ( LCF_VALUE_ID_FIELD_NAME ) . " = $lcf_value_id"
+		);
+		
+		$query -> update ( $db -> quoteName ( LCF_VALUE_TABLE_NAME ) ) -> set ( $fields ) -> where ( $conditions );
+
+		$db -> setQuery ( $query );
+		$dump = $query -> dump (  );
+
+		return $db -> execute (  );		
 	}
 	
 	public static function removeProductLPValue ( $value_id ) {
@@ -1280,8 +1623,40 @@ class DBHelper {
 		return true;
 	}
 	
-//=====================	Data bases	================================
+	// @NEED_TEST
+	public static function getLPValueCode ( $lcf_id, $lcf_value, $locale ) {
+		
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+		
+		$query
+			-> select ( $db -> quoteName ( LCF_VALUE_CODE_FIELD_NAME ) )
+			-> from ( $db -> quoteName ( LCF_VALUE_TABLE_NAME ) )
+			-> where ( $db -> quoteName ( LCF_VALUE_LCF_ID_FIELD_NAME ) . ' = ' . $lcf_id )
+			-> where ( $db -> quoteName ( LCF_VALUE_FIELD_NAME ) . ' = ' . $db -> quote ( $lcf_value ) )
+			-> where ( $db -> quoteName ( LCF_VALUE_LANG_FIELD_NAME ) . ' = ' . $db -> quote ( $locale ) );
+		
+		$db -> setQuery ( $query );
+		
+		return $db -> loadResult (  );
+	}
 	
+	// @NEED_TEST
+	public static function fetchLPValueMaxCode (  ) {
+		
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+		
+		$query
+			-> select ( "MAX({$db -> quoteName ( LCF_VALUE_CODE_FIELD_NAME )})" )
+			-> from ( $db -> quoteName ( LCF_VALUE_TABLE_NAME ) );
+		
+		$db -> setQuery ( $query );
+		
+		return $db -> loadResult (  );
+	}
+	
+//=====================	Data bases	================================
 /*		Получение связанных сущностей, например изображений продукта или сущности по идентификатору
 
 	@RETURN: array of values or null. If entity selecting, more than one value in the array means error
@@ -1449,6 +1824,34 @@ class DBHelper {
 		return $clear_array;
 	}
 	
+	public static function create_image_thumb_path ( $image, $size_xfix = "_0x90" ) {
+		
+		$media = self::get_media ( $image );
+		$thumb_path = "";
+		
+		if ( $media ['file_url_thumb'] ) {
+			$thumb_path = $media ['file_url_thumb'];
+		} else if ( $media ['file_url'] ) {
+			$path_position = strrpos ( $media ['file_url'], "/" );
+			$path = substr ( $media ['file_url'], 0, $path_position );
+			$file = substr ( $media ['file_url'], $path_position + 1 );
+			$dot_position = strrpos ( $file, "." );
+			$file_name = substr ( $file, 0, $dot_position );
+			$file_ext = substr ( $file, $dot_position + 1 );
+			$thumb_path = "$path/resized/$file_name" . $size_xfix . ".$file_ext";
+		}
+		
+		return $thumb_path;
+		
+		/*
+					if (!class_exists('VmImage'))
+						require(VMPATH_ADMIN . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'image.php');
+					
+					$image = new VmImage ( $image_id );
+					$image_thumb = $image -> createThumbFileUrl ( 90, 90 );
+		*/
+	}
+	
 	
 /*		==	Test functions	==	*/
 	public static function test ( $import_data ) {
@@ -1557,7 +1960,7 @@ class DBHelper {
 		
 		self::getProductLPValues ( $product_id, $imported_lcf_id, self::$config ['default-locale'] );
 		
-		self::addProductLPValue ( $product_id, $imported_lcf_id, self::$config ['default-locale'], $value );	//boolean
+		self::addProductLPValue ( $product_id, $imported_lcf_id, self::$config ['default-locale'], $value, $code );	//boolean
 		
 		self::removeProductLPValue ( $key );
 		*/
@@ -1782,6 +2185,11 @@ class Product {
 		return $c_objects;
 	}
 
+	public function price (  ) {
+		
+		return $this -> data -> get ( 'price' );
+	}
+	
 	public function properties (  ) {
 		
 		return $this -> properties;

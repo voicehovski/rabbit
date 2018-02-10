@@ -56,8 +56,8 @@ class JConfig {
 	public $unicodeslugs = '0';
 	public $feed_limit = '10';
 	public $feed_email = 'none';
-	public $log_path = 'Z:\\home\\ukrlinen.om\\www\\administrator/logs';
-	public $tmp_path = 'Z:\\home\\ukrlinen.om\\www/tmp';
+	public $log_path = 'T:\\home\\ukrlinen.om\\www\\administrator/logs';
+	public $tmp_path = 'T:\\home\\ukrlinen.om\\www/tmp';
 	public $lifetime = '128';
 	public $session_handler = 'database';
 	public $shared_session = '0';

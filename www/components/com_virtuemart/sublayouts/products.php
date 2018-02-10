@@ -89,7 +89,13 @@ foreach ($viewData['products'] as $type => $products ) {
 						echo $product->images[0]->displayMediaThumb('class="browseProductImage"', false);
 						?>
 					</a>
-
+<br/>
+<?php
+$icon_list = $viewData ['additional_icons'][$product -> virtuemart_product_id];
+foreach ( $icon_list as $icon ) {
+    echo "<img src='{$icon[1]}' alt='{$icon[0]}' title='{$icon[2]}'>";
+}
+?>
 			</div>
 
 			<div class="vm-product-rating-container">
