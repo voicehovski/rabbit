@@ -137,19 +137,19 @@ class CsvMetadata {
 		'(color)' => array ( 'index' => -1, 'name' => "(колір)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
 		'(size)' => array ( 'index' => -1, 'name' => "(розмір)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
 		
-		'name' => array ( 'index' => -1, 'name' => "Назва", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
-		'category' => array ( 'index' => -1, 'name' => "Категорія", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
-		'desc' => array ( 'index' => -1, 'name' => "Опис", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
-		'price' => array ( 'index' => -1, 'name' => "Ціна", 'pattern' => '^\d*$', 'error_status' => 2, 'type' => 0 ),
-		'images' => array ( 'index' => -1, 'name' => "Зображення", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
+		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
+		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2, 'type' => 0 ),
+		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
 		
 	);
 	
 	static $TRANSLATE_CSV_META_TEMPLATE_RU = array (
 		
-		'name' => array ( 'index' => -1, 'name' => "Назва", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
-		'category' => array ( 'index' => -1, 'name' => "Категорія", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
-		'desc' => array ( 'index' => -1, 'name' => "Опис", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
+		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
 		
 	);
 
@@ -178,9 +178,9 @@ class CsvMetadata {
 			array (
 				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^".CLOTHE_SKU_RE_TEMPLATE."$", 'error_status' => 2, 'type' => 0 ),
 				
-				'group' => array ( 'index' => -1, 'name' => "Група", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'group' => array ( 'index' => -1, 'name' => "Группа", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
 				'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
-				'collection' => array ( 'index' => -1, 'name' => "Колекція", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'collection' => array ( 'index' => -1, 'name' => "Коллекция", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
 				
 				'style' => array ( 'index' => -1, 'name' => "Стиль", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
 				'decor' => array ( 'index' => -1, 'name' => "Елементи обробки та декору", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),

@@ -27,7 +27,7 @@ class RabbitModelTranslateCheck extends JModelAdmin {
 		return array ( "Import result 1", "Import result 2" );
 	}
 	
-	public function translate ( $data, $type, $lang ) {
+	public function translate ( $data, $type, $lang, $meta ) {
 		
 		if ( ! class_exists ( 'DBHelper' ) ) require_once ( JPATH_COMPONENT_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'dbh.php' );
 		
@@ -42,19 +42,19 @@ class RabbitModelTranslateCheck extends JModelAdmin {
 		try {
 			switch ( $content_type ) {
 				case self::CLOTHES_CONTENT_TYPE:
-					DBHelper::translate ( $importData, $translateType, $lang );
+					DBHelper::translate ( $importData, $translateType, $lang, $meta );
 					break;
 				case self::FABRICS_CONTENT_TYPE:
-					DBHelper::translate ( $importData, $translateType, $lang );
+					DBHelper::translate ( $importData, $translateType, $lang, $meta );
 					break;
 				case self::TEXTILE_CONTENT_TYPE:
-					DBHelper::translate ( $importData, $translateType, $lang );
+					DBHelper::translate ( $importData, $translateType, $lang, $meta );
 					break;
 				case self::SOUVENIRS_CONTENT_TYPE:
-					DBHelper::translate ( $importData, $translateType, $lang );
+					DBHelper::translate ( $importData, $translateType, $lang, $meta );
 					break;
 				case self::ACCESSORIES_CONTENT_TYPE:
-					DBHelper::translate ( $importData, $translateType, $lang );
+					DBHelper::translate ( $importData, $translateType, $lang, $meta );
 					break;
 				default:
 					break;

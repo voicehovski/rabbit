@@ -176,7 +176,7 @@ class DBHelper {
 		
 	}
 	
-	public static function translate ( $import_data, $translate_type, $lang ) {
+	public static function translate ( $import_data, $translate_type, $lang, $translate_meta ) {
 		
 		// @PROBLEM: $translate_type values defined in another place
 		switch ( $translate_type ) {
@@ -193,7 +193,7 @@ class DBHelper {
 					// Получить парент ид, сравнить с сохраненным. Если совпадают, делаем только ЛКФ для текущего
 					// Проверить, есть ли такой парент в локтаблице
 					// Заменить или создать новый
-					$p = self::translateProduct ( $product, $parent_id );
+					$p = self::translateProduct ( $product, $lang );
 					if ( $p == null ) {
 						// Warning, no base for translate
 						continue;
@@ -205,7 +205,7 @@ class DBHelper {
 					// Локализовать
 					
 					// Берем список ЛКФ
-					self::translateLCF ( $product, $product_id );
+					//self::translateLCF ( $product, $product_id );
 				}
 			break;
 			default:
@@ -213,7 +213,7 @@ class DBHelper {
 		}
 	}
 
-	public static function translateProduct ( $product, $parent_id ) {
+	public static function translateProduct ( $product, $lang ) {
 		
 		$product_data_list = self::getProductData ( $product -> identifier (  ) );
 		$product_data = null;
@@ -226,11 +226,37 @@ class DBHelper {
 			throw new Exception ( "Duplicate sku " + $product_data_list [0]['product_sku'] );
 		}
 		
+		$product_id = $product_data ['virtuemart_product_id'];
+		$parent_id = $product_data ['product_parent_id'];
+		
 		//if ( $parent_id == $product_data ['product_parent_id'] ) {
 		//	return $parent_id;
 		//}
+
+		$parent_localization = self::createProductLocalizationObject ( $parent_id, $product );
+		$child_localization = self::createChildProductLocalizationObject ( $product_id, $product );
+	
+		if ( self::productLocalizationExists ( $parent_id, $lang ) ) {	
+			if ( ! self::updateProductLocalization ( $parent_localization, $lang ) ) {
+				throw new Exception ( 'Couldn`t update product localization. Id: ' . "$parent_id using child: " . $product -> getDebugInfo (  ) );
+			}
+		} else {
+			if ( ! self::createProductLocalization ( $parent_localization, $lang ) ) {
+				throw new Exception ( 'Couldn`t create product localization. Id: ' . "$parent_id using child: " . $product -> getDebugInfo (  ) );
+			}
+		}
 		
+		if ( self::productLocalizationExists ( $product_id, $lang ) ) {	
+			if ( ! self::updateProductLocalization ( $child_localization, $lang ) ) {
+				throw new Exception ( 'Couldn`t update product localization. Id: ' . "$product_id sku: " . $product -> getDebugInfo (  ) );
+			}
+		} else {
+			if ( ! self::createProductLocalization ( $child_localization, $lang ) ) {
+				throw new Exception ( 'Couldn`t create product localization. Id: ' . "$product_id sku: " . $product -> getDebugInfo (  ) );
+			}
+		}
 		
+		return true;
 	}
 	
 	public static function translateLCF ( $product, $product_id ) {
@@ -1181,7 +1207,7 @@ class DBHelper {
 		$lcl -> product_desc = $product -> desc (  );
 		$lcl -> product_name = $product -> name (  );
 		// meta...	metadesc, metakey, customtitle
-		$lcl -> slug = self::normalizeSlug2 ( $product -> identifier (  ) );
+		$lcl -> slug = self::normalizeSlug2 ( $product -> identifier (  ) ) . "_$product_id";
 		//$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
 		//$lcl -> slug = self::normalizeSlug ( $product -> identifier (  ), ! self::$config ['localized-slug'] );
 		
@@ -1193,9 +1219,10 @@ class DBHelper {
 		$lcl = new stdClass (  );
 		
 		$lcl -> virtuemart_product_id = $product_id;
-		$lcl -> slug = self::normalizeSlug2 ( $product -> identifier (  ) );
+		$lcl -> slug = self::normalizeSlug2 ( $product -> identifier (  ) ) . "_$product_id";
 		// @QUESTION: А откуда я здесь брал product_name ?
 		//$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
+		$lcl -> product_name = $product -> name (  );
 		
 		return $lcl;
 	}
@@ -1344,7 +1371,8 @@ class DBHelper {
 		$lcl -> category_name = $category_name;
 		//$lcl -> category_description = 
 		// meta...	
-		$lcl -> slug = self::normalizeSlug ( $category_name, ! self::$config ['localized-slug'] );
+		$lcl -> slug = $category_id;
+		//$lcl -> slug = self::normalizeSlug ( $category_name, ! self::$config ['localized-slug'] );
 		
 		return JFactory::getDbo (  ) -> insertObject ( "#__virtuemart_categories_$locale", $lcl );
 	}
