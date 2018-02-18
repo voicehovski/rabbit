@@ -189,20 +189,37 @@ class DBHelper {
 				foreach ( $import_data -> getAll (  ) as $item ) {
 					$product = new Product ( $item, $translate_meta );
 					
+					$product_data_list = self::getProductData ( $product -> identifier (  ) );
+					$product_data = null;
+					
+					if ( count ( $product_data_list ) == 0 ) {
+						// Warning, no base for translate
+						continue;
+					} else if ( count ( $product_data_list ) == 1 ) {
+						$product_data = $product_data_list [0];
+					} else {
+						throw new Exception ( "Duplicate sku " + $product_data_list [0]['product_sku'] );
+					}
+					
 					// Получить ИД продукта, если нет, выходим/следующий
 					// Получить парент ид, сравнить с сохраненным. Если совпадают, делаем только ЛКФ для текущего
 					// Проверить, есть ли такой парент в локтаблице
 					// Заменить или создать новый
-					$p = self::translateProduct ( $product, $lang );
-					if ( $p == null ) {
-						// Warning, no base for translate
-						continue;
-					}
+					$p = self::translateProduct ( $product, $product_data, $lang );
 					
 					// Получить ид категории продукта, если нет, выходим
 					// Получить ид парентов
 					// Если не совпадает количество, выходим (категории уже должны быть)
 					// Локализовать
+
+					$categories = $product -> categories (  );	// Retrun array of Category objects or null
+					if ( $categories == null ) {
+						// Warning, some troubles with categories
+						continue;
+					} else if ( count ( $categories ) > 1 ) {
+						throw new Exception ( 'Several categories for one product in translate table, sku: ' . $product -> identifier (  ) );
+					}
+					self::translateCategory ( $categories [0], $product_data, $lang );
 					
 					// Берем список ЛКФ
 					//self::translateLCF ( $product, $product_id );
@@ -213,18 +230,7 @@ class DBHelper {
 		}
 	}
 
-	public static function translateProduct ( $product, $lang ) {
-		
-		$product_data_list = self::getProductData ( $product -> identifier (  ) );
-		$product_data = null;
-		
-		if ( count ( $product_data_list ) == 0 ) {
-			return null;
-		} else if ( count ( $product_data_list ) == 1 ) {
-			$product_data = $product_data_list [0];
-		} else {
-			throw new Exception ( "Duplicate sku " + $product_data_list [0]['product_sku'] );
-		}
+	public static function translateProduct ( $product, $product_data, $lang ) {
 		
 		$product_id = $product_data ['virtuemart_product_id'];
 		$parent_id = $product_data ['product_parent_id'];
@@ -257,6 +263,45 @@ class DBHelper {
 		}
 		
 		return true;
+	}
+
+	public static function translateCategory ( $category, $product_data, $lang ) {
+		
+		if ( ! $category || empty ( $category ) ) {
+			throw new Exception ( 'Troubles with category translate, sku: ' . $product_data ['virtuemart_product_id'] );
+		}
+		
+		$category_ids = self::getProductCategories ( $product_data ['product_parent_id'] );
+		if ( $category_ids == null ) {
+			return null;
+		} else if ( count ( $category_ids ) > 1 ) {
+			throw new Exception ( 'Several categories for one product in db, sku: ' . $product_data ['virtuemart_product_id'] );
+		}
+		
+		if ( $category_ids [0] == 0 ) {
+			return;
+		}
+		
+		$db_path = array ( $category_ids [0] );
+		$category_path_data = self::getCategoryPath ( $category_ids [0] );
+		while ( $category_path_data ['category_parent_id'] != 0 ) {
+			$db_path [] = $category_path_data ['category_parent_id'];
+			$category_path_data = self::getCategoryPath ( $category_path_data ['category_parent_id'] );
+		}
+		$db_path = array_reverse ( $db_path );
+		
+		$path = $category -> path (  );
+		if ( count ( $db_path ) != count ( $path ) ) {
+			throw new Exception ( 'Categories count in table and db missmatch, sku: ' . $product_data ['virtuemart_product_id'] );
+		}
+		
+		for ( $i = 0; $i < count ( $path ); $i++ ) {
+			if ( self::existCategoryLocalization ( $db_path[$i], $lang ) ) {
+				self::updateCategoryLocalization ( $db_path[$i], $path [$i], $lang );
+			} else {
+				self::createCategoryLocalization ( $db_path[$i], $path [$i], $lang );
+			}
+		}
 	}
 	
 	public static function translateLCF ( $product, $product_id ) {
@@ -1376,8 +1421,48 @@ class DBHelper {
 		
 		return JFactory::getDbo (  ) -> insertObject ( "#__virtuemart_categories_$locale", $lcl );
 	}
+	
+	public static function updateCategoryLocalization ( $category_id, $category_name, $locale ) {
+		
+		$lcl = new stdClass (  );
+		
+		$lcl -> virtuemart_category_id = $category_id;
+		$lcl -> category_name = $category_name;
+		//$lcl -> category_description = 
+		// meta...	
+		$lcl -> slug = $category_id;
+		//$lcl -> slug = self::normalizeSlug ( $category_name, ! self::$config ['localized-slug'] );
+		
+		return JFactory::getDbo (  ) -> updateObject ( "#__virtuemart_categories_$locale", $lcl, 'virtuemart_category_id' );
+	}
+	
+	public static function existCategoryLocalization ( $category_id, $locale ) {
 
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
 
+		$query -> select ( array ( '*' ) );
+		$query -> from ( $db -> quoteName ( "#__virtuemart_categories_$locale" ) );
+		$query -> where ( $db -> quoteName ( "virtuemart_category_id" ) . ' = ' . $db -> quote ( $category_id ) );
+
+		$db -> setQuery ( $query );
+		$r = $db -> loadResult (  );// Returns value or null
+		return ! empty ( $r );
+	}
+
+	public static function getCategoryPath ( $category_id ) {
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+		
+		$query -> select ( array ( "*" ) );
+		$query -> from ( $db -> quoteName ( "#__virtuemart_category_categories" ) );
+		$query -> where ( $db -> quoteName ( "category_child_id" ) . ' = ' . $db -> quote ( $category_id ) );
+
+		$db -> setQuery ( $query );
+		return $db -> loadAssoc (  );
+	}
+	
+	
 //====================	Properties	===========================
 // @PROBLEM: Каждую запись обрабатывать не эффективно. Массовая вставка - удаление - модификация. То же для LP
 
