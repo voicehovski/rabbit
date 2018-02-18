@@ -5,5 +5,37 @@
 				name="id"
 				type="hidden"
 				/>
+
+		<field
+			name="translate_type"
+			type="radio"
+			label="COM_RABBIT_TRANSLATE_TRANSLATETYPE_LABEL"
+			description="COM_RABBIT_TRANSLATE_TRANSLATETYPE_DESC"
+			default="0"
+			>
+				<option value="0">COM_RABBIT_TRANSLATE_TRANSLATETYPE_AUTO</option>
+				<option value="1">COM_RABBIT_TRANSLATE_TRANSLATETYPE_ADDITIONAL</option>
+				<option value="2">COM_RABBIT_TRANSLATE_TRANSLATETYPE_FULL</option>
+		</field>
+				
+		<field
+		name="ru_table"
+		type="file"
+		label="COM_RABBIT_TRANSLATE_RU_FILE_LABEL"
+		description="COM_RABBIT_TRANSLATE_RU_FILE_DESC"
+		size="64"
+		class="inputbox"
+		default=""
+		/>
+		
+		<field
+		name="en_table"
+		type="file"
+		label="COM_RABBIT_TRANSLATE_EN_FILE_LABEL"
+		description="COM_RABBIT_TRANSLATE_EN_FILE_DESC"
+		size="64"
+		class="inputbox"
+		default=""
+		/>
 	</fieldset>
 </form>

@@ -11,21 +11,14 @@
 defined('_JEXEC') or die('Restricted access');
 
 
-class RabbitModelTranslate extends JModelAdmin
-{
-	public function getImportResult ( $param = array() )
-	{
-		//make import and return it result
-		return array ( "Import result 1", "Import result 2" );
-	}
+class RabbitModelTranslate extends JModelAdmin {
 	
-	public function getTable($type = 'Rabbit', $prefix = 'RabbitTable', $config = array())
-	{
+	public function getTable($type = 'Rabbit', $prefix = 'RabbitTable', $config = array()) {
+		
 		return JTable::getInstance($type, $prefix, $config);
 	}
 	
-	public function getForm ( $param = array(), $loadData = true )
-	{
+	public function getForm ( $param = array(), $loadData = true ) {
 		$form = $this->loadForm(
 			'com_rabbit.translate',
 			'translate',

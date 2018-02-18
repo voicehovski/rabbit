@@ -137,7 +137,6 @@ class RabbitViewCheck extends JViewLegacy
 				// @NOTE: Функция file_get_contents читает файл в одну строку, file - в массив строк
 				//Читаем данные из таблицы импорта и выполняем проверку.
 				$rawCsv = file ( $TMP . $table_filename );
-				$products = new ProductGroup (  );
 
 				// Нормализуем данные загруженные из файла и формируем метаданные - индексы колонок и т.д.
 				$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
@@ -150,91 +149,52 @@ class RabbitViewCheck extends JViewLegacy
 					$content_type = self::fetchProductionType ( $csv );
 				}
 				
+				$elements = array (  );
 				switch ( $content_type ) {
 					case self::CLOTHES_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.import';
 						$csvMeta = CsvMetadata::createClothesMetadata ( $csv -> headers (  ) );	//clothes
+						$elements = $this -> does_production ( $csvMeta, $product_variant_def, $csv );
+						// Струкрурные ошибки можно найти только в завершенном списке продукции
+						$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $elements ) );
+						$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 						break;
 					case self::FABRICS_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.import';
 						$csvMeta = CsvMetadata::createFabricsMetadata ( $csv -> headers (  ) );
 						break;
 					case self::TEXTILE_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.import';
 						$csvMeta = CsvMetadata::createTextileMetadata ( $csv -> headers (  ) );
 						break;
 					case self::TEST1_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.import';
 						$csvMeta = CsvMetadata::createTest1Metadata ( $csv -> headers (  ) );
 						break;
 					case self::TEST2_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.import';
 						$csvMeta = CsvMetadata::createTest2Metadata ( $csv -> headers (  ) );
 						break;
 					case self::SALES_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.importsales';
+						$csvMeta = CsvMetadata::createSalesMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_sales ( $csvMeta, $csv );
+						$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
+						break;
 					case self::ORDERS_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.importorders';
+						break;
 					case self::USERS_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.importusers';
 						break;
 					default:
 						throw new Exception ( "Unknown production type: " . $content_type );
 				}
 				
-				/*		Устанавливаем функцию вариаций для продукции
-
-					Функция вариаций возвращает набор свойств товара (товар - это то что пользователь видит в категории) определяющих варианты товара (варианты - то что пользователь должен выбрать при покупке). На текущий момент это цвет и размер
-				
-					По умолчанию функции используют артикул для определения вариаций. Формат артикула отличается для разных категорий, поэтому и функции отличаются и определены для различных типов товаров в статических фабричных методах CsvMetadata. Для некоторых товаров могут потребоваться специальные способы определения вариаций. Соответствующие параметры предусмотрены в первичной форме импорта.
-					
-					@TODO: Сделать вменяемый и безопасный выбор специальных функций вариаций и списков продукции. Шаблон РВ? Имя Поля? Передавать функцию? Список предустановленных? Функции create_product_variant_getter, fetchProductVariantProperties, языковые константы и первичная форма.
-				*/
-				// По умолчанию используем функции вариаций, определенные в метаданных. 
-				if ( $product_variant_def == self::DEFAULT_PRODUCT_VARIANT_DEF ) {
-					$getProductVariantProperties =
-					function ( $normalizedAssocRow ) use ( $csvMeta ) {
-						return $csvMeta -> getProductVariantProperties ( $normalizedAssocRow );
-					};
-				// Явное указание использовать дополнительные функции вариаций
-				} else { 
-					$getProductVariantProperties = self::create_product_variant_getter ( $product_variant_def );
-				}
-				
-				foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
-					
-					// Проверяем каждую ячейку регулярным выражением
-					// checkCells возвращает массив, поскольку в строке может быть несколько ошибок. Сливаем его с существующим
-					$errors = $csvMeta -> checkCells ( $row, $rowIndex );
-					if ( ! empty ( $errors ) ) {
-						$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
-						// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
-					}
-
-					// Формируем ассоциативный массив и фиксируем ошибку если не удалось
-					$assocRow = $csvMeta -> createAssoc ( $row );
-					if ( empty ( $assocRow ) ) {
-						$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv", 2 );
-						continue;
-					}
-					
-					
-					// @QUESTION: where should we catch errors like 'missing sku'? As critical error in cellErrors?
-					// Получаем свойства, определяющие разновидности одного товара
-					$productVariantProperties = $getProductVariantProperties ( $assocRow );//code=> color=> size=>
-					
-					if ( ! $productVariantProperties ) {
-						$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku', 2 );
-						continue;
-					}
-
-					// @QUESTION: Нужно ли сохранять ассоциативные массивы или они больше не понадобятся?
-					// @ATTENTION: В array_merge при совпадающих строковых ключах важна последовательность аргументов
-					// Формируем структуру данных для дальнейшего импорта
-					$products -> add ( new ProductData ( $rowIndex, array_merge ( $assocRow, $productVariantProperties ) ) );
-					
-				}
-				
-				// Струкрурные ошибки можно найти только в завершенном списке продукции
-				$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $products ) );
-				
-				$this -> importData ['data'] = $products;
+				$this -> importData ['data'] = $elements;
 				$this -> importData ['meta'] = $csvMeta -> getMeta (  );
+				$this -> importData ['content_type'] = $content_type;
 				$this -> csv = $csv;
-				
-				$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 				
 			} else {
 				$this -> check_status = 3;
@@ -285,18 +245,18 @@ class RabbitViewCheck extends JViewLegacy
 		switch ( $this -> check_status ) {
 			case 3:
 			case 2:
-				JToolBarHelper::custom('rabbit', null, null, "CANCEL", false);
-				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
+				JToolBarHelper::custom('rabbit', null, null, "CANCEL [new import]", false);
+				JToolBarHelper::custom('rabbit.close', null, null, "EXIT[finish import]", false);
 				break;
 			case 1:
-				JToolBarHelper::custom('rabbit.import', null, null, "IGNORE & CONTINUE [import]", false);
-				JToolBarHelper::custom('rabbit', null, null, "CANCEL", false);
-				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
+				JToolBarHelper::custom ( $this -> next_step, null, null, "IGNORE & CONTINUE [import]", false);
+				JToolBarHelper::custom('rabbit', null, null, "CANCEL [new import]", false);
+				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			case 0:
-				JToolBarHelper::custom('rabbit.import', null, null, "CONTINUE [import]", false);
-				JToolBarHelper::custom('rabbit', null, null, "CANCEL", false);
-				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
+				JToolBarHelper::custom ( $this -> next_step, null, null, "CONTINUE [import]", false);
+				JToolBarHelper::custom('rabbit', null, null, "CANCEL [new import]", false);
+				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			default:
 				return false;
@@ -393,5 +353,100 @@ class RabbitViewCheck extends JViewLegacy
 		return $getter;
 		
 	}
+	
+	/*
+	
+		@PROBLEM: Выдрано из кода. Большое количество аргументов обусловлено именно этим. Коряво и уёбищно.
+	*/
+	protected function does_production ( $csvMeta, $product_variant_def, $csv ) {
+		
+		$elements = new ProductGroup (  );
+		
+		/*		Устанавливаем функцию вариаций для продукции
 
+			Функция вариаций возвращает набор свойств товара (товар - это то что пользователь видит в категории) определяющих варианты товара (варианты - то что пользователь должен выбрать при покупке). На текущий момент это цвет и размер
+		
+			По умолчанию функции используют артикул для определения вариаций. Формат артикула отличается для разных категорий, поэтому и функции отличаются и определены для различных типов товаров в статических фабричных методах CsvMetadata. Для некоторых товаров могут потребоваться специальные способы определения вариаций. Соответствующие параметры предусмотрены в первичной форме импорта.
+			
+			@TODO: Сделать вменяемый и безопасный выбор специальных функций вариаций и списков продукции. Шаблон РВ? Имя Поля? Передавать функцию? Список предустановленных? Функции create_product_variant_getter, fetchProductVariantProperties, языковые константы и первичная форма.
+		*/
+		// По умолчанию используем функции вариаций, определенные в метаданных. 
+		if ( $product_variant_def == self::DEFAULT_PRODUCT_VARIANT_DEF ) {
+			$getProductVariantProperties =
+			function ( $normalizedAssocRow ) use ( $csvMeta ) {
+				return $csvMeta -> getProductVariantProperties ( $normalizedAssocRow );
+			};
+		// Явное указание использовать дополнительные функции вариаций
+		} else { 
+			$getProductVariantProperties = self::create_product_variant_getter ( $product_variant_def );
+		}
+		
+		foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
+			
+			// Проверяем каждую ячейку регулярным выражением
+			// checkCells возвращает массив, поскольку в строке может быть несколько ошибок. Сливаем его с существующим
+			$errors = $csvMeta -> checkCells ( $row, $rowIndex );
+			if ( ! empty ( $errors ) ) {
+				$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
+				// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
+			}
+
+			// Формируем ассоциативный массив и фиксируем ошибку если не удалось
+			$assocRow = $csvMeta -> createAssoc ( $row );
+			if ( empty ( $assocRow ) ) {
+				$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv", 2 );
+				continue;
+			}
+			
+			
+			// @QUESTION: where should we catch errors like 'missing sku'? As critical error in cellErrors?
+			// Получаем свойства, определяющие разновидности одного товара
+			$productVariantProperties = $getProductVariantProperties ( $assocRow );//code=> color=> size=>
+			
+			if ( ! $productVariantProperties ) {
+				$this -> cellErrors [] = new CellCsvError ( $rowIndex, 'sku', $assocRow ['sku'], 'Couldn`t parse sku', 2 );
+				continue;
+			}
+
+			// @QUESTION: Нужно ли сохранять ассоциативные массивы или они больше не понадобятся?
+			// @ATTENTION: В array_merge при совпадающих строковых ключах важна последовательность аргументов
+			// Формируем структуру данных для дальнейшего импорта
+			$elements -> add ( new ProductData ( $rowIndex, array_merge ( $assocRow, $productVariantProperties ) ) );
+			
+		}
+		
+		return $elements;
+	}
+
+	protected function does_sales ( $csvMeta, $csv ) {
+		
+		$sales = array (  );
+		
+		foreach ( $csv -> data (  ) as $rowIndex => $row ) {
+
+			// Проверяем каждую ячейку регулярным выражением
+			// checkCells возвращает массив, поскольку в строке может быть несколько ошибок. Сливаем его с существующим
+			$errors = $csvMeta -> checkCells ( $row, $rowIndex );
+			if ( ! empty ( $errors ) ) {
+				$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
+				// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
+			}
+
+			// Формируем ассоциативный массив и фиксируем ошибку если не удалось
+			$assocRow = $csvMeta -> createAssoc ( $row );
+			if ( empty ( $assocRow ) ) {
+				$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv", 2 );
+				continue;
+			}
+			if ( empty ( $assocRow ['sku'] ) && empty ( $assocRow ['category'] ) ) {
+				$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Both sku and category are empty while sales checking", 2 );
+				continue;
+			}
+			
+			$sales [] = $assocRow;
+			//$sales -> add ( new ProductData ( $rowIndex, $assocRow ) );
+		}
+		
+		return $sales;
+	}
 }

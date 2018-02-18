@@ -13,6 +13,15 @@ defined('_JEXEC') or die('Restricted access');
 
 class RabbitModelImport extends JModelAdmin
 {
+
+	// @PROBLEM: Уже третее дублирование констант - в описателе и виде check
+	const UNKNOWN_CONTENT_TYPE = '0';
+	const AUTO_CONTENT_TYPE = '1';
+	const CLOTHES_CONTENT_TYPE = '2';
+	const FABRICS_CONTENT_TYPE = '3';
+	const TEXTILE_CONTENT_TYPE = '4';
+	const TEST1_CONTENT_TYPE = '101';
+	const TEST2_CONTENT_TYPE = '102';
 	
 	protected $import_report = array (  );
 	
@@ -61,7 +70,19 @@ class RabbitModelImport extends JModelAdmin
 		
 		// @TODO: Здесь выполняем запись в базу данных. Устанавливаем статус результата. Записываем информацию в отчеты
 		try {
-			DBHelper::import ( $importData );
+			switch ( $importData ['content_type'] ) {
+				case self::CLOTHES_CONTENT_TYPE:
+					DBHelper::import ( $importData );
+					break;
+				case self::FABRICS_CONTENT_TYPE:
+					DBHelper::import_fabrics ( $importData );
+					break;
+				case self::TEXTILE_CONTENT_TYPE:
+					DBHelper::import_textile ( $importData );
+					break;
+				default:
+					break;
+			}
 		} catch ( Exception $e ) {
 			// @TODO: перенаправление на страницу ошибки
 			$this -> import_report ['error'] = $e -> getMessage (  );

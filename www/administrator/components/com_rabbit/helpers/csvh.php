@@ -2,6 +2,10 @@
 
 defined('_JEXEC') or die();
 
+define ( "CLOTHE_SKU_RE_TEMPLATE", "(\\d+)/(\\d+)/(\\d+)" );
+define ( "CATEGORY_RE_TEMPLATE", "/?[\w\s]+(/[\w\s]+)*/?" );
+define ( "_CATEGORY_RE_TEMPLATE_", "^" . CATEGORY_RE_TEMPLATE . "$" );
+
 class csvHelper {
 }
 
@@ -107,7 +111,7 @@ class Csv {
 class CsvMetadata {
 
 	// @NOTE: все конфигурационные данные можно вынести в отдельный файл, но использовать их не где и как попало, а в определенных местах типа такого. То есть использовать такие данные через строго определенный интерфейс
-
+	
 	/*		Метаданные таблиц импорта (МТИ)
 	
 		error_status	уровень "серьезности" ошибки (несовпадения поля таблицы с шаблоном): 2 - критичная, 1 - можно пропустить
@@ -120,7 +124,7 @@ class CsvMetadata {
 		'(size)' => array ( 'index' => -1, 'name' => "(размер)", 'pattern' => "^.*$", 'error_status' => 2, 'type' => -1 ),
 		
 		'name' => array ( 'index' => -1, 'name' => "Название", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
-		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => _CATEGORY_RE_TEMPLATE_, 'error_status' => 2, 'type' => 0 ),
 		'desc' => array ( 'index' => -1, 'name' => "Описание", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
 		'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => '^\d*$', 'error_status' => 2, 'type' => 0 ),
 		'images' => array ( 'index' => -1, 'name' => "Изображение", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
@@ -146,7 +150,7 @@ class CsvMetadata {
 		$CLOTHES_CSV_META_TEMPLATE = array_merge (
 			self::$PRODUCT_CSV_META_TEMPLATE,
 			array (
-				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2, 'type' => 0 ),
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^".CLOTHE_SKU_RE_TEMPLATE."$", 'error_status' => 2, 'type' => 0 ),
 				
 				'group' => array ( 'index' => -1, 'name' => "Группа", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
 				'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
@@ -164,7 +168,7 @@ class CsvMetadata {
 		$CLOTHES_CSV_META_TEMPLATE = array_merge (
 			self::$PRODUCT_CSV_META_TEMPLATE_UA,
 			array (
-				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^(\\d+)/(\\d+)/(\\d+)$", 'error_status' => 2, 'type' => 0 ),
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^".CLOTHE_SKU_RE_TEMPLATE."$", 'error_status' => 2, 'type' => 0 ),
 				
 				'group' => array ( 'index' => -1, 'name' => "Група", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
 				'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
@@ -262,6 +266,17 @@ class CsvMetadata {
 		return new CsvMetadata ( $TEXTILE_CSV_META_TEMPLATE, $headers, function ( $normalizedAssocRow ) {
 			$property = $normalizedAssocRow ['sku'];
 		} );
+	}
+	
+	public static function createSalesMetadata ( $headers ) {
+
+		$SALES_CSV_META_TEMPLATE = array (
+			'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^.*$", 'error_status' => 2, 'type' => 0 ),
+			'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^(".CATEGORY_RE_TEMPLATE.")*$", 'error_status' => 2, 'type' => 0 ),
+			'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => "^\d+([\.,](\d{1,2})|(\d+%))*$", 'error_status' => 2, 'type' => 0 )
+		);
+		
+		return new CsvMetadata ( $SALES_CSV_META_TEMPLATE, $headers );
 	}
 	
 	public static function createUserMetadata (  ) {}

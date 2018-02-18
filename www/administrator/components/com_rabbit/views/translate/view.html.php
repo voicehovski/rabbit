@@ -18,25 +18,6 @@ class RabbitViewTranslate extends JViewLegacy
 	public function display($tpl = null)
 	{
 		$this->form = $this->get('Form');
-		$this->import_result = $this->get('ImportResult');
-		
-		$app = JFactory::getApplication();
-		//$this -> check_status = rand ( 0, 2 );
-		$this -> check_status = 0;
-		
-		switch ( $this -> check_status ) {
-			case 2:
-				$this -> setLayout ( "error" );
-				break;
-			case 1:
-				$this -> setLayout ( "translate" );
-				break;
-			case 0:
-				break;
-			default:
-				JError::raiseError(500, "Unknown import check_status: " . $this -> check_status);
-				return false;
-		}
  
 		if (count($errors = $this->get('Errors')))
 		{
@@ -52,23 +33,12 @@ class RabbitViewTranslate extends JViewLegacy
 
 	protected function addToolBar()
 	{
-		JToolBarHelper::title($title, 'translate');
+		JToolBarHelper::title($title, 'Translate form');
 		
-		switch ( $this -> check_status ) {
-			case 2:
-				JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK", false);
-				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
-				break;
-			case 1:
-				JToolBarHelper::custom('rabbit', null, null, "CONTINUE [new import]", false);
-				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
-				break;
-			case 0:
-				JToolBarHelper::custom('rabbit.display', null, null, "CONTINUE [new import]", false);
-				JToolBarHelper::custom('rabbit.close', null, null, "EXIT", false);
-				break;
-			default:
-				return false;
-		}
+		JToolBarHelper::custom('rabbit.translatecheck', null, null, "TRANSLATE", false);
+		JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK [new import]", false);
+		JToolBarHelper::custom('rabbit', null, null, "ONE MORE [new import]", false);
+		JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
+
 	}
 }

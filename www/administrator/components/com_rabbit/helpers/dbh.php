@@ -72,6 +72,23 @@ class DBHelper {
 		return self::$multiproduct_cf_paramcf_id;
 	}
 	
+	public static function import_fabrics ( $import_data ) {
+		echo $import_data [ 'content_type' ];
+	}
+	
+	public static function import_textile ( $import_data ) {
+		echo $import_data [ 'content_type' ];
+	}
+	
+	public static function import_sales( $import_data ) {
+		echo $import_data [ 'content_type' ];
+		
+		foreach ( $import_data ['data'] as $sale ) {
+			
+			echo "{$sale['sku']} | {$sale['category']} = {$sale ['price']} <br/>";
+		}
+	}
+	
 	public static function import ( $import_data ) {
 		ini_set('max_execution_time', 900);
 		//		==	Test block	==
@@ -156,6 +173,10 @@ class DBHelper {
 			self::process_multiproduct_cf_values ( $main_product_id );
 			
 		}
+		
+	}
+	
+	public static function translate ( $import_data ) {
 		
 	}
 	

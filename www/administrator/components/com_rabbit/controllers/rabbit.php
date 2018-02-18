@@ -12,11 +12,58 @@ defined('_JEXEC') or die('Restricted access');
 class RabbitControllerRabbit extends JControllerForm
 {
 	public function translate ( $cachable = false, $urlparams = false ) {
+		
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=translate', false) );
+	}
+	
+	public function translatecheck ( $cachable = false, $urlparams = false ) {
+		
+		$TMP = JPATH_SITE . DIRECTORY_SEPARATOR . 'tmp';
+		
+		$input = JFactory::getApplication (  ) -> input;
+		
+		$uploaded_files = $input -> files -> get ( 'jform', null, 'raw' );
+		$hasFiles = false;
+
+		$options = $input -> getArray (
+			array (
+				"jform" => array (
+					'translate_type' => 'string'	//radio
+				)
+			)
+		);
+		
+		RabbitHelper::save_variable ( 'translate_type', $options ['jform'] ['translate_type'] );
+		
+		jimport('joomla.filesystem.file');
+		
+		// Загружаем файлы во временный каталог и сохраняем их имена в сессии. Возвращает массив
+		$uploaded_en_table = RabbitHelper::upload_file ( $uploaded_files, 'en_table', $TMP . DIRECTORY_SEPARATOR );
+
+		if ( ! $uploaded_en_table ) {
+			echo "Couldn`t load en_table<br/>";
+		} else {
+			RabbitHelper::save_variable ( 'en_table', $uploaded_en_table );
+			$hasFiles = true;
+		}
+		
+		$uploaded_ru_table = RabbitHelper::upload_file ( $uploaded_files, 'ru_table', $TMP . DIRECTORY_SEPARATOR );
+		if ( ! $uploaded_ru_table ) {
+			echo "Couldn`t load ru_table<br/>";
+		} else {
+			RabbitHelper::save_variable ( 'ru_table', $uploaded_ru_table );
+			$hasFiles = true;
+		}
+		
+		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=translatecheck', false) );
 	}
 		
 	public function import ( $cachable = false, $urlparams = false ) {
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=import', false) );
+	}
+	
+	public function importsales ( $cachable = false, $urlparams = false ) {
+		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=importsales', false) );
 	}
 
 /*		Приём данных импорта - таблиц и изображений
@@ -68,7 +115,7 @@ class RabbitControllerRabbit extends JControllerForm
 		
 		$uploaded_images = RabbitHelper::upload_images ( $uploaded_files, 'images', $TMP . DIRECTORY_SEPARATOR . 'full' );
 
-		if ( $uploaded_images === null ) {
+		if ( empty ( $uploaded_images ) ) {
 			echo "Couldn`t load images<br/>";
 		} else {
 			RabbitHelper::save_variable ( 'uploaded_images', $uploaded_images );
@@ -76,7 +123,7 @@ class RabbitControllerRabbit extends JControllerForm
 		}
 		
 		$uploaded_medi = RabbitHelper::upload_images ( $uploaded_files, 'medi_images', $TMP . DIRECTORY_SEPARATOR . 'medi' );
-		if ( $uploaded_medi === null ) {
+		if ( empty ( $uploaded_medi ) ) {
 			echo "Couldn`t load medi_images<br/>";
 		} else {
 			RabbitHelper::save_variable ( 'uploaded_medi', $uploaded_medi );
@@ -84,14 +131,14 @@ class RabbitControllerRabbit extends JControllerForm
 		}
 		
 		$uploaded_mini = RabbitHelper::upload_images ( $uploaded_files, 'mini_images', $TMP . DIRECTORY_SEPARATOR . 'mini' );
-		if ( $uploaded_mini === null ) {
+		if ( empty ( $uploaded_mini ) ) {
 			echo "Couldn`t load mini_images<br/>";
 		} else {
 			RabbitHelper::save_variable ( 'uploaded_mini', $uploaded_mini );
 			$hasFiles = true;
 		}
 		
-		if ( $uploaded_files ['import_table'] ) {
+		if ( ! empty ( $uploaded_files ['import_table']['name'] ) ) {
 			JFile::upload (
 				$uploaded_files [ 'import_table' ] ['tmp_name'],
 				$TMP . DIRECTORY_SEPARATOR . $uploaded_files [ 'import_table' ] [ 'name' ],
@@ -148,6 +195,9 @@ class RabbitControllerRabbit extends JControllerForm
 
 	
 	public function rollback ( $cachable = false, $urlparams = false ) {
+		
+		//To implement rollback implementation here yet now
+		
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit', false) );
 	}
 	

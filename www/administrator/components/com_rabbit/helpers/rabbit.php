@@ -44,6 +44,11 @@ abstract class RabbitHelper extends JHelperContent {
 		}
 		
 		foreach ( $uploaded_files [$name] as $image ) {
+			
+			if ( empty ( $image [ 'name' ] ) ) {
+				continue;
+			}
+			
 			JFile::upload (
 				$image ['tmp_name'],
 				$tmp_path . DIRECTORY_SEPARATOR . $image [ 'name' ],
@@ -53,6 +58,32 @@ abstract class RabbitHelper extends JHelperContent {
 		}
 		
 		return $uploaded_images;
+	}
+	
+	public static function upload_file ( $uploaded_files, $name, $tmp_path ) {
+		
+		if ( !$uploaded_files [$name] ) {
+			return null;
+		}
+		
+		jimport('joomla.filesystem.file');
+		jimport('joomla.filesystem.folder');
+		
+		if ( ! JFolder::exists ( $tmp_path ) && ! JFolder::create ( $tmp_path ) ) {
+			return null;
+		}
+		
+		if ( empty ( $uploaded_files [$name] [ 'name' ] ) ) {
+			return null;
+		}
+		
+		JFile::upload (
+			$uploaded_files [$name] ['tmp_name'],
+			$tmp_path . DIRECTORY_SEPARATOR . $uploaded_files [$name] [ 'name' ],
+			false, true
+		);
+		
+		return $uploaded_files [$name] [ 'name' ];
 	}
 	
 	public static function storeUploadedFiles (  ) {

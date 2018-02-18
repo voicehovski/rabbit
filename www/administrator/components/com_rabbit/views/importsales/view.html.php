@@ -10,7 +10,7 @@
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
 
-class RabbitViewImport extends JViewLegacy
+class RabbitViewImportSales extends JViewLegacy
 {
 	//protected $form = null;
 	protected $import_status = null;
@@ -27,9 +27,9 @@ class RabbitViewImport extends JViewLegacy
 		// @NOTE: Чтобы можно было передавать через сессию ОБЪЕКТЫ, в основном файле компонента перезапускаем сессию (см. также "Загрузка классов")
 		$this -> importData = RabbitHelper::restore_variable ( 'import_data' );
 		
-		$model = $this -> getModel ( 'import' );
+		$model = $this -> getModel ( 'importsales' );
 		$this -> import_status = $model -> import ( $this -> importData );
-		$this -> import_report = $this->get('ImportReport');
+		$this -> import_report = $this -> get('ImportReport');
 		
 		
 		switch ( $this -> import_status ) {
@@ -70,7 +70,6 @@ class RabbitViewImport extends JViewLegacy
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			case 0:
-				JToolBarHelper::custom('rabbit.translate', null, null, "CONTINUE [translate form]", false);
 				JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK [new import]", false);
 				JToolBarHelper::custom('rabbit', null, null, "ONE MORE [new import]", false);
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);

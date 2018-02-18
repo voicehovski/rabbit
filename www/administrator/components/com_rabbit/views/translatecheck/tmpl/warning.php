@@ -15,7 +15,7 @@ defined('_JEXEC') or die('Restricted access');
     method="post" name="adminForm" id="adminForm">
     <div class="form-horizontal">
         <fieldset class="adminform">
-            <legend><?php echo JText::_('COM_RABBIT_IMPORT_ERROR_DETAILS'); ?></legend>
+            <legend><?php echo JText::_('COM_RABBIT_TRANLATE_CHECK_WARNING_DETAILS'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
 					<p>Список ошибок</p>
