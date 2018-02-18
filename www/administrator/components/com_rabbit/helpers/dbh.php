@@ -176,8 +176,98 @@ class DBHelper {
 		
 	}
 	
-	public static function translate ( $import_data ) {
+	public static function translate ( $import_data, $translate_type, $lang ) {
 		
+		// @PROBLEM: $translate_type values defined in another place
+		switch ( $translate_type ) {
+			case 0:
+			break;
+			case 1:
+			break;
+			case 2:	//Full
+				$parent_id = 0;
+				foreach ( $import_data -> getAll (  ) as $item ) {
+					$product = new Product ( $item, $translate_meta );
+					
+					// Получить ИД продукта, если нет, выходим/следующий
+					// Получить парент ид, сравнить с сохраненным. Если совпадают, делаем только ЛКФ для текущего
+					// Проверить, есть ли такой парент в локтаблице
+					// Заменить или создать новый
+					$p = self::translateProduct ( $product, $parent_id );
+					if ( $p == null ) {
+						// Warning, no base for translate
+						continue;
+					}
+					
+					// Получить ид категории продукта, если нет, выходим
+					// Получить ид парентов
+					// Если не совпадает количество, выходим (категории уже должны быть)
+					// Локализовать
+					
+					// Берем список ЛКФ
+					self::translateLCF ( $product, $product_id );
+				}
+			break;
+			default:
+			throw new Exception ( 'Unsupported translate_type' );
+		}
+	}
+
+	public static function translateProduct ( $product, $parent_id ) {
+		
+		$product_data_list = self::getProductData ( $product -> identifier (  ) );
+		$product_data = null;
+		
+		if ( count ( $product_data_list ) == 0 ) {
+			return null;
+		} else if ( count ( $product_data_list ) == 1 ) {
+			$product_data = $product_data_list [0];
+		} else {
+			throw new Exception ( "Duplicate sku " + $product_data_list [0]['product_sku'] );
+		}
+		
+		//if ( $parent_id == $product_data ['product_parent_id'] ) {
+		//	return $parent_id;
+		//}
+		
+		
+	}
+	
+	public static function translateLCF ( $product, $product_id ) {
+		
+		return;
+		
+		foreach ( $product -> localizedProperties (  ) as $imported_lcf ) {
+			$property_name = self::create_localized_property_name ( $imported_lcf -> identifier (  ) );
+			$imported_lcf_id = self::getLocalizedPropertyId ( $property_name );
+	
+			if ( ! $imported_lcf_id ) {
+				throw new Exception ( "Unknown LCF: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" ); 
+			}
+			
+			$value_list_db = self::unsophisticate_assoc ( self::getProductLPValues ( $product_id, $imported_lcf_id, $lang ), LCF_VALUE_FIELD_NAME );
+			
+			foreach ( $imported_lcf -> values (  ) as $value ) {
+				$k = array_search ( $value, $value_list_db );
+				if ( $k !== false ) {
+					unset ( $value_list_db [$k] );
+				} else {
+					// @NEED_TEST: Проверить что будет в случае одноименных значений разных ЛКФ
+					// @PROBLEM: Для получения кода значения ЛКФ нам нужно его значение на базовом языке
+					$code = self::getLPValueCode ( $imported_lcf_id, $value, $lang );
+					if ( empty ( $code ) ) {
+						$code = self::fetchLPValueMaxCode (  ) + 1;
+					}
+					if ( ! self::addProductLPValue ( $product_id, $imported_lcf_id, $lang, $value, $code ) ) {
+						throw new Exception ( "Couldn`t bind localized property value: {$imported_lcf -> getDebugInfo (  )}. Product: {$product -> getDebugInfo (  )}" );
+					}
+				}
+			}
+			
+			foreach ( $value_list_db as $key => $v ) {
+				self::removeProductLPValue ( $key );
+			}
+		}		
 	}
 	
 	//@TESTED 20:20 5.01.2018, RENAMED
@@ -974,6 +1064,39 @@ class DBHelper {
 			return null;
 		}	
 	}
+	
+	public static function getProductData ( $productSku ) {
+		/*
+		$s = new stdClass (  );
+		$s -> column_name = '*';
+		$s -> table_name = '#__virtuemart_products';
+		$s -> condition_column = 'product_sku';
+
+		$results = self::get_id_ ( $productSku, $s );
+		
+		if ( $results ) {
+			if ( count ( $results ) > 1 ) {
+				throw new Exception ( "Several products with sku $productSku" );
+			}
+			return $results [0];
+		} else {
+			return null;
+		}
+		*/
+
+		$db = JFactory::getDbo (  );
+		$query = $db -> getQuery ( true );
+
+		$query -> select ( array ( '*' ) );
+		$query -> from ( $db -> quoteName ( '#__virtuemart_products' ) );
+		// Массив или chain. По умолчанию AND (второй строковоий аргумент)
+		$query -> where ( $db -> quoteName ( 'product_sku' ) . ' = ' . $db -> quote ( $productSku ) );
+
+		$db -> setQuery ( $query );
+		// Возвращает массив значений. В случае неудачи возвращает null
+		// @QUESTION: В смысле ошибки или пустого результата? 
+		return $db -> loadAssocList (  );
+	}
 
 /*		Создаёт новый продукт без локализации
 
@@ -1058,7 +1181,8 @@ class DBHelper {
 		$lcl -> product_desc = $product -> desc (  );
 		$lcl -> product_name = $product -> name (  );
 		// meta...	metadesc, metakey, customtitle
-		$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
+		$lcl -> slug = self::normalizeSlug2 ( $product -> identifier (  ) );
+		//$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
 		//$lcl -> slug = self::normalizeSlug ( $product -> identifier (  ), ! self::$config ['localized-slug'] );
 		
 		return $lcl;
@@ -1069,7 +1193,9 @@ class DBHelper {
 		$lcl = new stdClass (  );
 		
 		$lcl -> virtuemart_product_id = $product_id;
-		$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
+		$lcl -> slug = self::normalizeSlug2 ( $product -> identifier (  ) );
+		// @QUESTION: А откуда я здесь брал product_name ?
+		//$lcl -> slug = self::normalizeSlug ( $lcl -> product_name, ! self::$config ['localized-slug'] ) . "-$product_id";
 		
 		return $lcl;
 	}
@@ -1795,6 +1921,13 @@ class DBHelper {
 		return $db -> execute (  );
 	}
 
+	static function normalizeSlug2 ( $slug ) {
+		$st = mb_ereg_replace ( '[\s/]', "_", $slug );
+		// @QUESTION: Не уверен что дефис в конце скобок интерпретируется правильно 
+		$st = mb_ereg_replace ( '[^a-zA-Z0-9_-]', "", $st );
+		return $st;
+	}
+	
 	static function normalizeSlug ( $slug, $translit ) {
 		$st = mb_ereg_replace ( '[\s/]', "_", $slug );
 		$st = mb_ereg_replace ( '\W', "", $st );

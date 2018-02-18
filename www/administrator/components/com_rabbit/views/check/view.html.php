@@ -19,6 +19,8 @@ class RabbitViewCheck extends JViewLegacy
 	const CLOTHES_CONTENT_TYPE = '2';
 	const FABRICS_CONTENT_TYPE = '3';
 	const TEXTILE_CONTENT_TYPE = '4';
+	const SOUVENIRS_CONTENT_TYPE = '5';
+	const ACCESSORIES_CONTENT_TYPE = '6';
 	const TEST1_CONTENT_TYPE = '101';
 	const TEST2_CONTENT_TYPE = '102';
 	const SALES_CONTENT_TYPE = '253';

@@ -1,1 +1,0 @@
-<?php die("Access Denied"); ?>#x#a:2:{s:6:"result";s:230:"<option selected=\"selected\"  value="8">Одяг</option><option  disabled="disabled" value="9"> - Для жінок</option><option   value="10"> -  - Сукні</option><option   value="11">Сукні для жінок</option>";s:6:"output";s:0:"";}

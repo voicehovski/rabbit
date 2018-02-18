@@ -26,6 +26,7 @@ class RabbitViewImport extends JViewLegacy
 		
 		// @NOTE: Чтобы можно было передавать через сессию ОБЪЕКТЫ, в основном файле компонента перезапускаем сессию (см. также "Загрузка классов")
 		$this -> importData = RabbitHelper::restore_variable ( 'import_data' );
+		RabbitHelper::save_variable ( 'content_type', $this -> importData ['content_type'] );
 		
 		$model = $this -> getModel ( 'import' );
 		$this -> import_status = $model -> import ( $this -> importData );

@@ -22,13 +22,24 @@ class RabbitViewTranslateCheck extends JViewLegacy
 		$ru_table_filename = RabbitHelper::restore_variable ( 'ru_table' );		//	filename or null
 		$en_table_filename = RabbitHelper::restore_variable ( 'en_table' );
 		
+		$csvRu = null;
+		if ( $ru_table_filename ) {
+			$rawCsvRu = file ( $TMP . $ru_table_filename );
+			$csvRu = new Csv ( $rawCsvRu, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
+		}
+		
+		/*if ( $en_table_filename ) {
+			$rawCsvEn = file ( $TMP . $en_table_filename );
+			$csvEn = new Csv ( $rawCsvEn, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
+		}*/
+		
+		$model = $this -> getModel ( "translatecheck" );
+		
 		$this->form = $this -> get ( 'Form' );
 		
-		$this->import_result = $this -> get ( 'Translate' );
+		$this -> check_status = $model -> translate ( $csvRu, $translate_type, 'ru_ru' );
 		
 		$this->import_result = $this -> get ( 'TranslateResult' );
-
-		$this -> check_status = 1;
 		
 		switch ( $this -> check_status ) {
 			case 2:
@@ -70,7 +81,7 @@ class RabbitViewTranslateCheck extends JViewLegacy
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			case 0:
-				ToolBarHelper::custom('rabbit', null, null, "ONE MORE [new import]", false);
+				JToolBarHelper::custom('rabbit', null, null, "ONE MORE [new import]", false);
 				JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK [new import]", false);
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;

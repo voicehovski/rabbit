@@ -144,6 +144,14 @@ class CsvMetadata {
 		'images' => array ( 'index' => -1, 'name' => "Зображення", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
 		
 	);
+	
+	static $TRANSLATE_CSV_META_TEMPLATE_RU = array (
+		
+		'name' => array ( 'index' => -1, 'name' => "Назва", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'category' => array ( 'index' => -1, 'name' => "Категорія", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 ),
+		'desc' => array ( 'index' => -1, 'name' => "Опис", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 )
+		
+	);
 
 	public static function createOldClothesMetadata ( $headers ) {
 		
@@ -188,6 +196,22 @@ class CsvMetadata {
 		);
 		
 		return new CsvMetadata ( $CLOTHES_CSV_META_TEMPLATE, $headers );
+	}
+	
+	public static function createClothesTranlateRuMetadata ( $headers ) {
+		
+		$TEMPLATE = array_merge (
+			self::$TRANSLATE_CSV_META_TEMPLATE_RU,
+			array (
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^".CLOTHE_SKU_RE_TEMPLATE."$", 'error_status' => 2, 'type' => 0 ),
+				'consist' => array ( 'index' => -1, 'name' => "Состав", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'collection' => array ( 'index' => -1, 'name' => "Коллекция", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'group' => array ( 'index' => -1, 'name' => "Группа", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 ),
+				'theme' => array ( 'index' => -1, 'name' => "Тема", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 2 )
+			)
+		);
+		
+		return new CsvMetadata ( $TEMPLATE, $headers );
 	}
 	
 	public static function createTest1Metadata ( $headers ) {
@@ -308,7 +332,8 @@ class CsvMetadata {
 				}
 			}
 		}
-		//! Проверить, все ли заголовки есть, нет ли лишних
+		// @TODO: Проверить, все ли заголовки есть, нет ли лишних
+		// Сейчас. Если в таблице нет некоторых заголовков, предусмотренных в соответствии с метаданными, то их индексы в метаданных просто останутся равными -1. А если есть лишние заголовки, они будут проигнорированы
 		$this -> metadata = $metadata_template;
 		
 		if ( is_callable ( $getPVP ) ) {

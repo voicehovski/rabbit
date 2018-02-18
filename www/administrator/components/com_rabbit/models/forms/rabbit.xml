@@ -23,6 +23,7 @@
 		<field
 				name="content_type"
 				type="list"
+				default="2"
 				label="COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_LABEL"
 				description="COM_RABBIT_RABBIT_TABLE_CONTENTTYPE_DESC"
 				>
