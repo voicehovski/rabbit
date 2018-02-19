@@ -292,12 +292,43 @@ class CsvMetadata {
 		} );
 	}
 	
+	public static function createSouvenirMetadata ( $headers ) {
+		
+		$SOUVENIR_CSV_META_TEMPLATE = array_merge (
+			self::$PRODUCT_CSV_META_TEMPLATE,
+			array (
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 )
+			)
+		);
+		
+		return new CsvMetadata ( $TEXTILE_CSV_META_TEMPLATE, $headers, function ( $normalizedAssocRow ) {
+			$property = $normalizedAssocRow ['sku'];
+		} );
+	}
+	
+	public static function createAccessoryMetadata ( $headers ) {
+		
+		$ACCESSORY_CSV_META_TEMPLATE = array_merge (
+			self::$PRODUCT_CSV_META_TEMPLATE,
+			array (
+				'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^.+$", 'error_status' => 2, 'type' => 0 )
+			)
+		);
+		
+		return new CsvMetadata ( $TEXTILE_CSV_META_TEMPLATE, $headers, function ( $normalizedAssocRow ) {
+			$property = $normalizedAssocRow ['sku'];
+		} );
+	}
+	
 	public static function createSalesMetadata ( $headers ) {
 
 		$SALES_CSV_META_TEMPLATE = array (
 			'sku' => array ( 'index' => -1, 'name' => "Артикул", 'pattern' => "^.*$", 'error_status' => 2, 'type' => 0 ),
 			'category' => array ( 'index' => -1, 'name' => "Категория", 'pattern' => "^(".CATEGORY_RE_TEMPLATE.")*$", 'error_status' => 2, 'type' => 0 ),
-			'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => "^\d+([\.,](\d{1,2})|(\d+%))*$", 'error_status' => 2, 'type' => 0 )
+			'price' => array ( 'index' => -1, 'name' => "Цена", 'pattern' => "^\d+([\.,](\d{1,2})|(\d+%))*$", 'error_status' => 2, 'type' => 0 ),
+			'title' => array ( 'index' => -1, 'name' => "Название акции", 'pattern' => "^.*$", 'error_status' => 1, 'type' => 0 ),
+			'begin' => array ( 'index' => -1, 'name' => "Дата начала", 'pattern' => "^\d\d.\d\d\.\d\d$", 'error_status' => 1, 'type' => 0 ),
+			'end' => array ( 'index' => -1, 'name' => "Дата окончания", 'pattern' => "^\d\d.\d\d\.\d\d$", 'error_status' => 1, 'type' => 0 )
 		);
 		
 		return new CsvMetadata ( $SALES_CSV_META_TEMPLATE, $headers );

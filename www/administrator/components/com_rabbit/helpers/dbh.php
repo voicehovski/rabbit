@@ -85,7 +85,43 @@ class DBHelper {
 		
 		foreach ( $import_data ['data'] as $sale ) {
 			
-			echo "{$sale['sku']} | {$sale['category']} = {$sale ['price']} <br/>";
+			// echo "{$sale['sku']} | {$sale['category']} = {$sale ['price']} <br/>";
+
+			$db = JFactory::getDbo();
+
+			$query = $db->getQuery(true);
+			
+			$query
+				-> select ( $db -> quoteName ( 'product_parent_id' ) )
+				-> from ( $db -> quoteName ( '#__virtuemart_products' ) )
+				-> where ( $db -> quoteName ( 'product_sku' ) . ' = ' . $db -> quote ( $sale['sku'] ) );
+			
+			$db->setQuery($query);
+			$product_id = $db -> loadResult (  );
+			
+			if ( empty ( $product_id ) ) {
+				continue;
+			}
+			
+			$query = $db->getQuery(true);
+
+			// Fields to update.
+			$fields = array(
+				$db->quoteName('override') . ' = 1',
+				$db->quoteName ('product_override_price') . ' = ' . $db -> quote ( $sale ['price'] )
+			);
+
+			// Conditions for which records should be updated.
+			$conditions = array(
+				$db->quoteName('virtuemart_product_id') . ' = ' . $product_id
+			);
+
+			$query->update($db->quoteName('#__virtuemart_product_prices'))->set($fields)->where($conditions);
+
+			$db->setQuery($query);
+
+			$result = $db->execute();
+			
 		}
 	}
 	
