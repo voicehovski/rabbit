@@ -11,6 +11,12 @@ defined('_JEXEC') or die('Restricted access');
  
 class RabbitControllerRabbit extends JControllerForm
 {
+	
+	public function autotranslate ( $cachable = false, $urlparams = false ) {
+		
+		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=autotranslate', false) );
+	}
+	
 	public function translate ( $cachable = false, $urlparams = false ) {
 		
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=translate', false) );
@@ -28,34 +34,34 @@ class RabbitControllerRabbit extends JControllerForm
 		$options = $input -> getArray (
 			array (
 				"jform" => array (
-					'translate_type' => 'string'	//radio
+					'translate_type' => 'string',	//radio
+					'content_type' => 'string',
+					'language' => 'string'
 				)
 			)
 		);
 		
 		RabbitHelper::save_variable ( 'translate_type', $options ['jform'] ['translate_type'] );
+		RabbitHelper::save_variable ( 'content_type', $options ['jform'] ['content_type'] );
+		RabbitHelper::save_variable ( 'language', $options ['jform'] ['language'] );
 		
 		jimport('joomla.filesystem.file');
 		
-		// Загружаем файлы во временный каталог и сохраняем их имена в сессии. Возвращает массив
-		$uploaded_en_table = RabbitHelper::upload_file ( $uploaded_files, 'en_table', $TMP . DIRECTORY_SEPARATOR );
-
-		if ( ! $uploaded_en_table ) {
-			echo "Couldn`t load en_table<br/>";
+		// Загружаем файлы во временный каталог и сохраняем их имена в сессии. Возвращает массив	
+		$translation_table = RabbitHelper::upload_file ( $uploaded_files, 'translation', $TMP . DIRECTORY_SEPARATOR );
+		if ( ! $translation_table ) {
+			echo "Couldn`t load translation table<br/>";
 		} else {
-			RabbitHelper::save_variable ( 'en_table', $uploaded_en_table );
-			$hasFiles = true;
-		}
-		
-		$uploaded_ru_table = RabbitHelper::upload_file ( $uploaded_files, 'ru_table', $TMP . DIRECTORY_SEPARATOR );
-		if ( ! $uploaded_ru_table ) {
-			echo "Couldn`t load ru_table<br/>";
-		} else {
-			RabbitHelper::save_variable ( 'ru_table', $uploaded_ru_table );
+			RabbitHelper::save_variable ( 'translation', $translation_table );
 			$hasFiles = true;
 		}
 		
 		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=translatecheck', false) );
+	}
+		
+	public function translatedo ( $cachable = false, $urlparams = false ) {
+		
+		$this->setRedirect(JRoute::_('index.php?option=com_rabbit&view=translatedo', false) );
 	}
 		
 	public function import ( $cachable = false, $urlparams = false ) {

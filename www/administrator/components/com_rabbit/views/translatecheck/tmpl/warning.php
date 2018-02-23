@@ -18,8 +18,45 @@ defined('_JEXEC') or die('Restricted access');
             <legend><?php echo JText::_('COM_RABBIT_TRANLATE_CHECK_WARNING_DETAILS'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
-					<p>Список ошибок</p>
+				
+					<?php foreach ($this->form->getFieldset() as $field): ?>
+                        <div class="control-group">
+                            <div class="control-label"><?php echo "control-label"; ?></div>
+                            <div class="controls"><?php echo "controls"; ?></div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
+				<div style="clear:both"></div>
+				
+				<?php
+				echo "<legend>" . JText::_('COM_RABBIT_CHECK_WARNING_CELL_ERROR_HEADER') . "</legend>";
+				echo "<div class='cell-errors'>";
+				foreach ( $this -> cellErrors as & $error ) {
+					echo "<p>";
+					echo "[ {$error -> row (  )} : {$error -> column (  )} ] - {$error -> value (  )} - [ {$error -> comment (  )} ]";
+					echo "</p>";
+				}
+				echo "</div>";
+				unset ( $error );
+				
+				
+				echo "<legend>" . JText::_('COM_RABBIT_CHECK_WARNING_STRUCTURAL_ERROR_HEADER') . "</legend>";
+				echo "<div class='structural-errors'>";
+				foreach ( $this -> structuralErrors as & $error ) {	//array
+					$indexes = $error -> rowIndexes (  );
+					if ( count ( $indexes ) == 1 ) {
+						$rows = $indexes [0];
+					} else {
+						$rows =	$error -> isRange (  ) ? implode ( ", ", $indexes ) : $indexes[0] . " - " . $indexes[count ( $indexes )];
+					}
+					echo "<p>";
+					echo "[$rows] : {$error -> value (  )} [ {$error -> comment (  )} ]";
+					echo "</p>";
+				}
+				echo "</div>";
+				unset ( $error );
+				?>
+				
             </div>
         </fieldset>
     </div>

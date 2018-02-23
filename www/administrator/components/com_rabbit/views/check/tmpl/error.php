@@ -43,12 +43,10 @@ JFactory::getDocument()->addStyleDeclaration(
                 </div>
 				
 					<?php
-						if ( $this -> check_status > 2 ) {
-							echo "<legend>" . JText::_('COM_RABBIT_CHECK_ERROR_COMMON_ERROR_HEADER') . "</legend>";
-						} else {
-					?>
-				
-					<?php
+					if ( $this -> check_status > 2 ) {
+						echo "<legend>" . JText::_('COM_RABBIT_CHECK_ERROR_COMMON_ERROR_HEADER') . "</legend>";
+					} else {
+					
 					echo "<legend>" . JText::_('COM_RABBIT_CHECK_ERROR_CELL_ERROR_HEADER') . "</legend>";
 					// @IDEA: cellErrors can be a simple array, so that items method is exess. In this case method getByRCIndexes is redundant too
 					echo "<div class='cell-errors'>";

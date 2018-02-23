@@ -542,7 +542,7 @@ class DBHelper {
 				// @TODO: Check image title
 				$image_title = $image -> identifier (  );
 				
-				$image_id = self::createImage ( $image_title, self::$config ['product-image-path'] . $image -> identifier (  ) );
+				$image_id = self::createImage ( $image_title, self::$config ['product-image-path'] . strtolower ( $image -> identifier (  ) ) );
 				if ( $image_id === null ) {
 					throw new Exception ( "Couldn`t create image {$image -> getDebugInfo (  )}" );
 				}

@@ -6,14 +6,14 @@
 				type="hidden"
 				/>
 
-		<field
+		<!-- field
 			name="translate_type"
 			type="radio"
 			label="COM_RABBIT_TRANSLATE_TRANSLATETYPE_LABEL"
 			description="COM_RABBIT_TRANSLATE_TRANSLATETYPE_DESC"
 			default="2"
 			>
-				<!-- option value="0">COM_RABBIT_TRANSLATE_TRANSLATETYPE_AUTO</option -->
+				<option value="0">COM_RABBIT_TRANSLATE_TRANSLATETYPE_AUTO</option>
 				<option value="1">COM_RABBIT_TRANSLATE_TRANSLATETYPE_ADDITIONAL</option>
 				<option value="2">COM_RABBIT_TRANSLATE_TRANSLATETYPE_FULL</option>
 		</field>
@@ -52,7 +52,7 @@
 		size="64"
 		class="inputbox"
 		default=""
-		/>
+		/ -->
 		
 	</fieldset>
 </form>

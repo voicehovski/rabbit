@@ -12,8 +12,19 @@ defined('_JEXEC') or die('Restricted access');
 
 class RabbitViewTranslateCheck extends JViewLegacy
 {
+	const UNKNOWN_CONTENT_TYPE = '0';
+	const AUTO_CONTENT_TYPE = '1';
+	const CLOTHES_CONTENT_TYPE = '2';
+	const FABRICS_CONTENT_TYPE = '3';
+	const TEXTILE_CONTENT_TYPE = '4';
+	const SOUVENIRS_CONTENT_TYPE = '5';
+	const ACCESSORIES_CONTENT_TYPE = '6';
+	
 	protected $cellErrors = array (  );
 	protected $structuralErrors = array (  );
+	
+	protected $language = null;	// ru_ru, en_gb
+	protected $content_type = null;
 	
 	//protected $form = null;
 	protected $check_status = null;
@@ -24,28 +35,50 @@ class RabbitViewTranslateCheck extends JViewLegacy
 		
 		$TMP = JPATH_SITE . '/tmp/';
 		$translate_type = RabbitHelper::restore_variable ( 'translate_type' );	//	0,1,2 or null
-		$ru_table_filename = RabbitHelper::restore_variable ( 'ru_table' );		//	filename or null
-		$en_table_filename = RabbitHelper::restore_variable ( 'en_table' );
+		$translation_filename = RabbitHelper::restore_variable ( 'translation' );		//	filename or null
+		$language = RabbitHelper::restore_variable ( 'language' );		//	filename or null
+		$content_type = RabbitHelper::restore_variable ( 'content_type' );
 		
-		if ( $ru_table_filename ) {
-			$rawCsvRu = file ( $TMP . $ru_table_filename );
-			$csvRu = new Csv ( $rawCsvRu, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
-			$csvMetaRu = CsvMetadata::createClothesTranlateRuMetadata ( $csvRu -> headers (  ) );
-			$elements = $this -> does_translate ( $csvMetaRu, null, $csvRu );
+		if ( $translate_type == 1 ) {	// Добавочный перевод
+			// 
+			if ( $translation_filename ) {
+				$rawCsv = file ( $TMP . $translation_filename );
+				$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
+				$csvMeta = CsvMetadata::createAdditionalTranslateMetadata ( $csv -> headers (  ) );
+				$elements = $this -> does_additional_translate ( $csvMeta, $csv );	// Array of assoc
+				$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
+			}
+		} else if (  $translate_type == 2 ) {	// Полный перевод
+		
+			if ( $translation_filename ) {
+				$rawCsv = file ( $TMP . $translation_filename );
+				$csv = new Csv ( $rawCsv, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
+				
+				switch ( $content_type ) {
+					case self::CLOTHES_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createTranslateMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_translate ( $csvMeta, null, $csv );
+						break;
+					case self::TEXTILE_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createTranslateMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_translate ( $csvMeta, null, $csv );
+						break;
+					case self::SOUVENIRS_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createTranslateMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_translate ( $csvMeta, null, $csv );
+						break;
+					case self::ACCESSORIES_CONTENT_TYPE:
+						$csvMeta = CsvMetadata::createTranslateMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_translate ( $csvMeta, null, $csv );
+						break;
+				}
+				
+				$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
+			}
 		}
 		
-		/*if ( $en_table_filename ) {
-			$rawCsvEn = file ( $TMP . $en_table_filename );
-			$csvEn = new Csv ( $rawCsvEn, array ( 'delim'=>';','encl'=>'','esc'=>'' ) );
-		}*/
-		
-		$model = $this -> getModel ( "translatecheck" );
 		
 		$this->form = $this -> get ( 'Form' );
-		
-		$this -> check_status = $model -> translate ( $elements, $translate_type, 'ru_ru', $csvMetaRu );
-		
-		$this->import_result = $this -> get ( 'TranslateResult' );
 		
 		switch ( $this -> check_status ) {
 			case 2:
@@ -53,8 +86,12 @@ class RabbitViewTranslateCheck extends JViewLegacy
 				break;
 			case 1:
 				$this -> setLayout ( "warning" );
+				RabbitHelper::save_variable ( 'translate_data', $elements );
+				RabbitHelper::save_variable ( 'translate_metadata', $csvMeta );
 				break;
 			case 0:
+				RabbitHelper::save_variable ( 'translate_data', $elements );
+				RabbitHelper::save_variable ( 'translate_metadata', $csvMeta );
 				break;
 			default:
 				JError::raiseError(500, "Unknown import check_status: " . $this -> check_status);
@@ -82,18 +119,45 @@ class RabbitViewTranslateCheck extends JViewLegacy
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			case 1:
-				JToolBarHelper::custom('rabbit.dotranslate', null, null, "IGNORE & CONTINUE [translate]", false);
+				JToolBarHelper::custom('rabbit.translatedo', null, null, "IGNORE & CONTINUE [translate]", false);
 				JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK [new import]", false);
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			case 0:
-				JToolBarHelper::custom('rabbit', null, null, "ONE MORE [new import]", false);
+				JToolBarHelper::custom('rabbit.translatedo', null, null, "CONTINUE [translate]", false);
 				JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK [new import]", false);
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			default:
 				return false;
 		}
+	}
+	
+	protected function does_additional_translate ( $csvMeta,  $csv ) {
+		
+		$elements = array (  );
+		
+		foreach ( $csv -> data (  ) as $rowIndex => $row ) {	// Каждая строка исходных данных
+			
+			// Проверяем каждую ячейку регулярным выражением
+			// checkCells возвращает массив, поскольку в строке может быть несколько ошибок. Сливаем его с существующим
+			$errors = $csvMeta -> checkCells ( $row, $rowIndex );
+			if ( ! empty ( $errors ) ) {
+				$this -> cellErrors = array_merge ( $this -> cellErrors, $errors );	
+				// @PROBLEM: We should catch critical errors like empty sku ... getWorst if >= CRITICAL
+			}
+
+			// Формируем ассоциативный массив и фиксируем ошибку если не удалось
+			$assocRow = $csvMeta -> createAssoc ( $row );
+			if ( empty ( $assocRow ) ) {
+				$this -> structuralErrors [] = new StructuralError ( array ( $rowIndex ), '', "Couldn`t create assoc row from csv", 2 );
+				continue;
+			}
+
+			$elements [] = $assocRow;
+		}
+		
+		return $elements;
 	}
 	
 	protected function does_translate ( $csvMeta, $product_variant_def, $csv ) {

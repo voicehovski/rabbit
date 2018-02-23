@@ -26,7 +26,6 @@ class RabbitViewImport extends JViewLegacy
 		
 		// @NOTE: Чтобы можно было передавать через сессию ОБЪЕКТЫ, в основном файле компонента перезапускаем сессию (см. также "Загрузка классов")
 		$this -> importData = RabbitHelper::restore_variable ( 'import_data' );
-		RabbitHelper::save_variable ( 'content_type', $this -> importData ['content_type'] );
 		
 		$model = $this -> getModel ( 'import' );
 		$this -> import_status = $model -> import ( $this -> importData );
@@ -71,6 +70,7 @@ class RabbitViewImport extends JViewLegacy
 				JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
 				break;
 			case 0:
+				JToolBarHelper::custom('rabbit.autotranslate', null, null, "AUTOTRANSLATE", false);
 				JToolBarHelper::custom('rabbit.translate', null, null, "CONTINUE [translate form]", false);
 				JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK [new import]", false);
 				JToolBarHelper::custom('rabbit', null, null, "ONE MORE [new import]", false);

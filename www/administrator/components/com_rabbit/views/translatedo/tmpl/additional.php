@@ -11,26 +11,23 @@
 defined('_JEXEC') or die('Restricted access');
 
 ?>
-<form action="<?php echo JRoute::_('index.php?option=com_rabbit'); ?>"
-    method="post" name="adminForm" id="adminForm">
+<form action="<?php echo JRoute::_('index.php?option=com_rabbit&view=translatecheck'); ?>"
+    method="post" name="adminForm" id="adminForm" enctype="multipart/form-data" >
     <div class="form-horizontal">
         <fieldset class="adminform">
-            <legend><?php echo JText::_('COM_RABBIT_TRANLATE_CHECK_OK_HEADER'); ?></legend>
+            <legend><?php echo JText::_('COM_RABBIT_TRANSLATE_DEFAULT_DETAILS'); ?></legend>
             <div class="row-fluid">
                 <div class="span6">
-                    <?php foreach ($this->form->getFieldset() as $field): ?>
+					<?php foreach ($this->form->getFieldset() as $field): ?>
                         <div class="control-group">
-                            <div class="control-label"><?php echo "control-label"; ?></div>
-                            <div class="controls"><?php echo "controls"; ?></div>
+                            <div class="control-label" title="<?=$field -> description?>"><?php echo $field->label; ?></div>
+                            <div class="controls"><?php echo $field->input; ?></div>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
         </fieldset>
-        <fieldset>
-			<legend><?php echo JText::_('COM_RABBIT_TRANLATE_CHECK_OK_DETAILS'); ?></legend>	
-        </fieldset>
     </div>
-    <input type="hidden" name="task" value="rabbit" />
+    <input type="hidden" name="task" value="rabbit.translatecheck" />
     <?php echo JHtml::_('form.token'); ?>
 </form>

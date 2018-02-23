@@ -10,10 +10,12 @@
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
 
-class RabbitViewRabbit extends JViewLegacy
+class RabbitViewAutoTranslate extends JViewLegacy
 {
-	protected $form = null;
+	//protected $form = null;
+	protected $check_status = null;
 
+	// Результатом работы будет перевод или файл для доперевода
 	public function display($tpl = null)
 	{
 		$this->form = $this->get('Form');
@@ -32,11 +34,12 @@ class RabbitViewRabbit extends JViewLegacy
 
 	protected function addToolBar()
 	{
-		JToolBarHelper::title($title, 'Rabbit import form');
-		JToolBarHelper::custom('rabbit.translate', null, null, "TRANSLATE [form]", false);
-		JToolBarHelper::custom('rabbit.check', null, null, "CHECK [tables]", false);
+		JToolBarHelper::title($title, 'Translate form');
+		
+		//JToolBarHelper::custom('rabbit.translatecheck', null, null, "TRANSLATE", false);
+		JToolBarHelper::custom('rabbit.rollback', null, null, "ROLLBACK [new import]", false);
+		JToolBarHelper::custom('rabbit', null, null, "ONE MORE [new import]", false);
 		JToolBarHelper::custom('rabbit.close', null, null, "EXIT [finish import]", false);
-		// Встроенная кнопка жумлы, осуществляющая переход на option=com_rabbit&view=rabbits, то есть выход из редактирования в список. Для этого должен быть создана стандартный вид {$имя_компонента}s
-		//JToolBarHelper::cancel( 'rabbit.cancel', 'JTOOLBAR_CLOSE'	);
+
 	}
 }

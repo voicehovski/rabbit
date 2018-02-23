@@ -155,27 +155,36 @@ class RabbitViewCheck extends JViewLegacy
 				switch ( $content_type ) {
 					case self::CLOTHES_CONTENT_TYPE:
 						$this -> next_step = 'rabbit.import';
-						$csvMeta = CsvMetadata::createClothesMetadata ( $csv -> headers (  ) );	//clothes
+						$csvMeta = CsvMetadata::createOldClothesMetadata ( $csv -> headers (  ) );	//clothes
 						$elements = $this -> does_production ( $csvMeta, $product_variant_def, $csv );
 						// Струкрурные ошибки можно найти только в завершенном списке продукции
 						$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $elements ) );
 						$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 						break;
-					case self::FABRICS_CONTENT_TYPE:
-						$this -> next_step = 'rabbit.import';
-						$csvMeta = CsvMetadata::createFabricsMetadata ( $csv -> headers (  ) );
-						break;
+					//case self::FABRICS_CONTENT_TYPE:
+					//	$this -> next_step = 'rabbit.import';
+					//	$csvMeta = CsvMetadata::createFabricsMetadata ( $csv -> headers (  ) );
+					//	break;
 					case self::TEXTILE_CONTENT_TYPE:
 						$this -> next_step = 'rabbit.import';
 						$csvMeta = CsvMetadata::createTextileMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_production ( $csvMeta, $product_variant_def, $csv );
+						$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $elements ) );
+						$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 						break;
-					case self::TEST1_CONTENT_TYPE:
+					case self::SOUVENIRS_CONTENT_TYPE:
 						$this -> next_step = 'rabbit.import';
-						$csvMeta = CsvMetadata::createTest1Metadata ( $csv -> headers (  ) );
+						$csvMeta = CsvMetadata::createSouvenirMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_production ( $csvMeta, $product_variant_def, $csv );
+						$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $elements ) );
+						$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 						break;
-					case self::TEST2_CONTENT_TYPE:
+					case self::ACCESSORIES_CONTENT_TYPE:
 						$this -> next_step = 'rabbit.import';
-						$csvMeta = CsvMetadata::createTest2Metadata ( $csv -> headers (  ) );
+						$csvMeta = CsvMetadata::createAccessoryMetadata ( $csv -> headers (  ) );
+						$elements = $this -> does_production ( $csvMeta, $product_variant_def, $csv );
+						$this -> structuralErrors = array_merge ( $this -> structuralErrors, $csvMeta -> checkStructural ( $elements ) );
+						$this -> check_status = max ( CellCsvError::worstErrorStatus ( $this -> cellErrors ), StructuralError::worstErrorStatus ( $this -> structuralErrors ) );
 						break;
 					case self::SALES_CONTENT_TYPE:
 						$this -> next_step = 'rabbit.importsales';
@@ -188,6 +197,10 @@ class RabbitViewCheck extends JViewLegacy
 						break;
 					case self::USERS_CONTENT_TYPE:
 						$this -> next_step = 'rabbit.importusers';
+						break;
+					case self::TEST1_CONTENT_TYPE:
+						$this -> next_step = 'rabbit.import';
+						$csvMeta = CsvMetadata::createTest1Metadata ( $csv -> headers (  ) );
 						break;
 					default:
 						throw new Exception ( "Unknown production type: " . $content_type );
